@@ -12,10 +12,10 @@
 <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css">
 <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
 
-<!-- uibuilder client for Node-RED -->
+<!-- uibuilder client for Node-RED (kept; harmless on GitHub Pages) -->
 <script src="/uibuilder/uibuilder.iife.min.js"></script>
 
-<!-- ✅ Firebase compat SDKs (no need for type="module") -->
+<!-- ✅ Firebase compat SDKs -->
 <script src="https://www.gstatic.com/firebasejs/11.0.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/11.0.1/firebase-database-compat.js"></script>
 
@@ -33,11 +33,11 @@ input,select,button{background:#0c1322;border:1px solid var(--chip-br);color:var
 input::placeholder{color:#72819a}
 select option{background:#0b1220;color:var(--text)}
 button.accent{background:var(--accent);color:#0b0f15;border:none;}
-button.ghost{background:#0c1322;color:var(--text);border:1px solid var(--chip-br);}
+button.ghost{background:#0c1322;color:#var(--text);border:1px solid var(--chip-br);}
 button.danger{background:var(--danger);color:#fff;border:none;}
 button:disabled{opacity:.6;cursor:not-allowed}
 .small{font-size:12px}
-.muted{color:var(--muted)}
+.muted{color:#var(--muted)}
 main{display:grid;grid-template-columns:1fr 380px;height:calc(100vh - 58px);}
 #map{width:100%;height:100%;}
 aside{background:var(--panel);border-left:1px solid var(--border);padding:14px;overflow:auto}
@@ -65,7 +65,7 @@ hr{border:none;border-top:1px solid var(--border);margin:10px 0;}
 .quick-filters button{padding:10px 0;border-radius:12px;border:1px solid var(--chip-br);background:#0b1220;cursor:pointer}
 .quick-filters button.active{border-color:var(--accent);box-shadow:0 0 0 2px rgba(124,156,255,.15) inset}
 
-/* Finder (YOU circle + proportional rotating arrow) */
+/* Finder overlay */
 #finder{position:fixed;inset:0;display:none;z-index:1400;
   background:radial-gradient(1200px 1200px at 50% -200px,#0b0f15,#0f172a 70%,#0b0f15);
   align-items:center;justify-content:center;flex-direction:column;gap:18px;}
@@ -165,7 +165,7 @@ hr{border:none;border-top:1px solid var(--border);margin:10px 0;}
   </aside>
 </main>
 
-<!-- Add Beacon Modal: Zone ID (select) + Trolley ID -->
+<!-- Add Beacon Modal -->
 <div id="modalBackdrop" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);
 z-index:1000;display:flex;align-items:center;justify-content:center;">
   <div class="dialog">
@@ -233,15 +233,14 @@ z-index:1000;display:flex;align-items:center;justify-content:center;">
     <button id="findExit" class="ghost">Exit</button>
     <button id="findRecenter" class="accent">Recenter</button>
   </div>
-  <div class="small muted" style="margin-top:8px" id="findHint">Move your phone to calibrate direction…</div>
+  <div class="small muted" id="findHint" style="margin-top:8px">Move your phone to calibrate direction…</div>
 </div>
 
 <div id="toast" class="toast">Saved</div>
 
 <script>
 /* ---------- Config ---------- */
-const API_URL = "/api/beacons";          // optional fallback
-const ENABLE_POST = false;               // using Firebase via uibuilder
+const API_URL = "/api/beacons";          // optional fallback for your own API
 const AUTO_REFRESH_MS = 10000;
 
 /* ---------- uibuilder ---------- */
@@ -309,7 +308,7 @@ function haversine(aLat,aLng,bLat,bLng){
 function bearingBetween(aLat,aLng,bLat,bLng){
   const y = Math.sin(toRad(bLng-aLng))*Math.cos(toRad(bLat));
   const x = Math.cos(toRad(aLat))*Math.sin(toRad(bLat)) -
-            Math.sin(toRad(aLat))*Math.cos(toRad(bLat))*Math.cos(toRad(bLng-aLng));
+            Math.sin(toRad(aLat))*Math.cos(toRad(blat))*Math.cos(toRad(bLng-aLng));
   return (toDeg(Math.atan2(y,x)) + 360) % 360;
 }
 
@@ -329,7 +328,7 @@ function showDetails(b){
     (b.lat!=null && b.lng!=null) ? `${(+b.lat).toFixed(5)}, ${(+b.lng).toFixed(5)}` : "—";
 }
 
-/* ---------- Delete flow ---------- */
+/* ---------- Delete flow (kept: local only) ---------- */
 const confirmBox = document.getElementById("confirm");
 document.getElementById("c_cancel").onclick = () => confirmBox.style.display = "none";
 document.getElementById("btnDelete").onclick = () => {
@@ -408,8 +407,8 @@ function renderOverview(){
         <div class="small muted">${escapeH(b.id||"-")}</div>
       </div>
       <div class="small muted">
-        ${(b.lat!=null&&b.lng!=null)?`${(+b.lat).toFixed(5)}, ${(+b.lng).toFixed(5)}`:"—"}
-        · ${escapeH(b.lastUpdate||"—")}
+        ${(b.lat!=null&&b.lng!=null)?${'`'}${'${(+b.lat).toFixed(5)}'}, ${'${(+b.lng).toFixed(5)}'}${'`'}:"—"}
+        · ${'${escapeH(b.lastUpdate||"—")}'}
       </div>`;
     div.onclick = ()=>{
       const m = idToMarker.get(b.id);
@@ -468,16 +467,12 @@ document.querySelectorAll(".quick-filters").forEach(group=>{
   });
 });
 
-/* ---------- Add Beacon (ZoneID + TrolleyID → Firebase via uibuilder) ---------- */
+/* ---------- Add Beacon (writes) ---------- */
 const modal = document.getElementById("modalBackdrop");
 const banner = document.getElementById("placementBanner");
 
-document.getElementById("addBtn").onclick = () => {
-  modal.style.display = "flex";
-};
-document.getElementById("m_cancel").onclick = () => {
-  modal.style.display = "none";
-};
+document.getElementById("addBtn").onclick = () => { modal.style.display = "flex"; };
+document.getElementById("m_cancel").onclick = () => { modal.style.display = "none"; };
 document.getElementById("m_continue").onclick = () => {
   const zoneId = document.getElementById("m_zoneId").value.trim();
   const trolleyId = document.getElementById("m_trolleyId").value.trim();
@@ -531,48 +526,39 @@ map.on("click",async e=>{
     timestamp: nowIso
   };
 
-  if(ui && typeof ui.send === "function"){
+  // ----- write path: try uibuilder first (if served via Node-RED), else fallback to Firebase directly
+  if (ui && typeof ui.send === "function") {
     ui.send({ payload: fbPayload });
-    toast("Beacon sent to Firebase");
-  }else if(window.uibuilder && typeof window.uibuilder.send === "function"){
+    toast("Sent via Node-RED (uibuilder)");
+  } else if (window.uibuilder && typeof window.uibuilder.send === "function") {
     window.uibuilder.send({ payload: fbPayload });
-    toast("Beacon sent to Firebase");
-  }else{
-    console.warn("uibuilder not available; not sent to Node-RED");
-    toast("Added locally (uibuilder not connected)");
+    toast("Sent via Node-RED (uibuilder)");
+  } else {
+    console.warn("uibuilder not available → using Firebase fallback");
+    saveToFirebase(fbPayload);
   }
 
   pendingBeacon = null;
 });
 
-/* ---------- Finder (Find My-style arrow) ---------- */
+/* ---------- Finder (kept) ---------- */
 const finderEl = document.getElementById("finder");
 const findTargetEl = document.getElementById("findTarget");
 const findDistanceEl = document.getElementById("findDistance");
 const findHintEl = document.getElementById("findHint");
 const arrowSpin = document.getElementById("arrowSpin");
 
-function setArrowRotation(deg){
-  arrowSpin.style.transform = `rotate(${deg}deg)`;
-}
-function varAccent2(){
-  return getComputedStyle(document.documentElement).getPropertyValue('--accent-2').trim() || '#22c55e';
-}
+function setArrowRotation(deg){ arrowSpin.style.transform = `rotate(${deg}deg)`; }
+function varAccent2(){ return getComputedStyle(document.documentElement).getPropertyValue('--accent-2').trim() || '#22c55e'; }
 
 function startFinder(beacon){
-  if(!beacon || beacon.lat==null || beacon.lng==null){
-    toast("Beacon has no coordinates");
-    return;
-  }
+  if(!beacon || beacon.lat==null || beacon.lng==null){ toast("Beacon has no coordinates"); return; }
   targetLatLng = [+beacon.lat, +beacon.lng];
   findTargetEl.textContent = beacon.name || beacon.id || "Target";
   finderEl.style.display = "flex";
   map.panTo(targetLatLng);
 
-  if(!navigator.geolocation){
-    findHintEl.textContent = "Geolocation not supported.";
-    return;
-  }
+  if(!navigator.geolocation){ findHintEl.textContent = "Geolocation not supported."; return; }
 
   userMarker = userMarker || L.circleMarker(
     map.getCenter(),
@@ -586,43 +572,25 @@ function startFinder(beacon){
 
     const dist = haversine(aLat,aLng,bLat,bLng);
     const bearing = bearingBetween(aLat,aLng,bLat,bLng);
-    const deviceHeading = (headingDeg!=null) ? headingDeg :
-                          (Number.isFinite(heading) ? heading : null);
-    const relative = (deviceHeading!=null)
-      ? ((bearing - deviceHeading + 360) % 360)
-      : bearing;
+    const deviceHeading = (headingDeg!=null) ? headingDeg : (Number.isFinite(heading) ? heading : null);
+    const relative = (deviceHeading!=null) ? ((bearing - deviceHeading + 360) % 360) : bearing;
 
     setArrowRotation(relative);
-    findDistanceEl.textContent = dist>1000
-      ? (dist/1000).toFixed(2)+" km"
-      : Math.round(dist)+" m";
-
+    findDistanceEl.textContent = dist>1000 ? (dist/1000).toFixed(2)+" km" : Math.round(dist)+" m";
     userMarker.setLatLng([aLat,aLng]);
-  }, err=>{
-    findHintEl.textContent = "Location error: " + err.message;
-  }, {enableHighAccuracy:true,maximumAge:1000,timeout:10000});
+  }, err=>{ findHintEl.textContent = "Location error: " + err.message; }, {enableHighAccuracy:true,maximumAge:1000,timeout:10000});
 
   orientationHandler = e=>{
-    if(typeof e.webkitCompassHeading === "number"){
-      headingDeg = e.webkitCompassHeading;
-    }else if(e.absolute && e.alpha!=null){
-      headingDeg = 360 - e.alpha;
-    }
+    if(typeof e.webkitCompassHeading === "number"){ headingDeg = e.webkitCompassHeading; }
+    else if(e.absolute && e.alpha!=null){ headingDeg = 360 - e.alpha; }
   };
 
   if(window.DeviceOrientationEvent){
     if(typeof DeviceOrientationEvent.requestPermission === "function"){
       DeviceOrientationEvent.requestPermission()
-        .then(state=>{
-          if(state === "granted"){
-            window.addEventListener("deviceorientation",orientationHandler,true);
-          }else{
-            findHintEl.textContent = "Compass permission denied; arrow uses map north.";
-          }
-        })
-        .catch(()=>{
-          findHintEl.textContent = "Compass not available; arrow uses map north.";
-        });
+        .then(state=>{ if(state === "granted"){ window.addEventListener("deviceorientation",orientationHandler,true); }
+                       else { findHintEl.textContent = "Compass permission denied; arrow uses map north."; }})
+        .catch(()=>{ findHintEl.textContent = "Compass not available; arrow uses map north."; });
     }else{
       window.addEventListener("deviceorientation",orientationHandler,true);
     }
@@ -630,136 +598,177 @@ function startFinder(beacon){
     findHintEl.textContent = "No compass API; arrow uses map north.";
   }
 }
-
 function stopFinder(){
   finderEl.style.display = "none";
-  if(watchId!=null){
-    navigator.geolocation.clearWatch(watchId);
-    watchId = null;
-  }
-  if(orientationHandler){
-    window.removeEventListener("deviceorientation",orientationHandler,true);
-    orientationHandler = null;
-  }
-  headingDeg = null;
-  targetLatLng = null;
+  if(watchId!=null){ navigator.geolocation.clearWatch(watchId); watchId = null; }
+  if(orientationHandler){ window.removeEventListener("deviceorientation",orientationHandler,true); orientationHandler = null; }
+  headingDeg = null; targetLatLng = null;
 }
-
-document.getElementById("btnSearch").onclick = () => {
-  if(selectedBeacon) startFinder(selectedBeacon);
-};
+document.getElementById("btnSearch").onclick = () => { if(selectedBeacon) startFinder(selectedBeacon); };
 document.getElementById("findExit").onclick = () => stopFinder();
-document.getElementById("findRecenter").onclick = () => {
-  if(userMarker){ map.panTo(userMarker.getLatLng()); }
-};
+document.getElementById("findRecenter").onclick = () => { if(userMarker){ map.panTo(userMarker.getLatLng()); } };
 
-/* ---------- Listen for Node-RED / Firebase updates via uibuilder ---------- */
+/* ---------- uibuilder inbound (kept) ---------- */
 if (ui && typeof ui.onChange === "function") {
   ui.onChange('msg', (msg) => {
     console.log('uibuilder msg received:', msg);
-
     if (msg.topic === 'beacon/bulkUpdate' && Array.isArray(msg.payload)) {
       msg.payload.forEach(p => {
-        const id = p.trolleyId || p.id;
-        if (!id) return;
+        const id = p.trolleyId || p.id; if (!id) return;
         const idx = beacons.findIndex(b => b.id === id);
         const b = {
-          id,
-          name: (p.zoneId ? p.zoneId + ' • ' : '') + id,
-          zone: p.zoneId || '',
-          lat: p.latitude ?? p.lat,
-          lng: p.longitude ?? p.lng,
-          gatewayId: p.gatewayId || '—',
-          lastUpdate: p.timestamp || new Date().toISOString()
+          id, name: (p.zoneId ? p.zoneId + ' • ' : '') + id,
+          zone: p.zoneId || '', lat: p.latitude ?? p.lat, lng: p.longitude ?? p.lng,
+          gatewayId: p.gatewayId || '—', lastUpdate: p.timestamp || new Date().toISOString()
         };
-        if (idx >= 0) beacons[idx] = { ...beacons[idx], ...b };
-        else beacons.push(b);
+        if (idx >= 0) beacons[idx] = { ...beacons[idx], ...b }; else beacons.push(b);
       });
       render();
     }
-
     if (msg.topic === 'beacon/update' && msg.payload) {
-      const p = msg.payload;
-      const id = p.trolleyId || p.id;
-      if (!id) return;
+      const p = msg.payload; const id = p.trolleyId || p.id; if (!id) return;
       const idx = beacons.findIndex(b => b.id === id);
       const b = {
-        id,
-        name: (p.zoneId ? p.zoneId + ' • ' : '') + id,
-        zone: p.zoneId || '',
-        lat: p.latitude ?? p.lat,
-        lng: p.longitude ?? p.lng,
-        gatewayId: p.gatewayId || '—',
-        lastUpdate: p.timestamp || new Date().toISOString()
+        id, name: (p.zoneId ? p.zoneId + ' • ' : '') + id,
+        zone: p.zoneId || '', lat: p.latitude ?? p.lat, lng: p.longitude ?? p.lng,
+        gatewayId: p.gatewayId || '—', lastUpdate: p.timestamp || new Date().toISOString()
       };
-      if (idx >= 0) beacons[idx] = { ...beacons[idx], ...b };
-      else beacons.push(b);
+      if (idx >= 0) beacons[idx] = { ...beacons[idx], ...b }; else beacons.push(b);
       render();
     }
   });
 }
 
 /* -------------------------------------------------------
-   ✅ NEW: Firebase live reader (kept everything else)
+   ✅ Firebase: config + live reader + writer
    ------------------------------------------------------- */
-(function initFirebaseLive(){
-  // 1) Your web app config (fill these)
-  const firebaseConfig = {
-    apiKey: "YOUR_API_KEY",
-    authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-    databaseURL: "https://YOUR_PROJECT_ID-default-rtdb.asia-southeast1.firebasedatabase.app",
-    projectId: "YOUR_PROJECT_ID",
-    storageBucket: "YOUR_PROJECT_ID.appspot.com",
-    messagingSenderId: "XXXXXXXXXXXX",
-    appId: "1:XXXXXXXXXXXX:web:YYYYYYYYYYYYYY"
-  };
+let firebaseDb = null;
 
+// 1) Fill your app config
+const firebaseConfig = {
+  apiKey: "YOUR_API_KEY",
+  authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+  // Use your regioned RTDB URL (you used asia-southeast1 earlier)
+  databaseURL: "https://YOUR_PROJECT_ID-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "YOUR_PROJECT_ID",
+  storageBucket: "YOUR_PROJECT_ID.appspot.com",
+  messagingSenderId: "XXXXXXXXXXXX",
+  appId: "1:XXXXXXXXXXXX:web:YYYYYYYYYYYYYY"
+};
+
+(function initFirebase(){
   try {
-    // Guard against double init
+    if (typeof firebase === "undefined") {
+      console.error("Firebase SDK not loaded");
+      toast("Firebase SDK not loaded");
+      return;
+    }
     if (firebase.apps?.length === 0) {
       firebase.initializeApp(firebaseConfig);
     }
-    const db = firebase.database();
-
-    // 2) Helper: /Tracking object -> beacons[]
-    function setBeaconsFromTracking(obj){
-      const arr = [];
-      for (const id in (obj||{})) {
-        const v = obj[id] || {};
-        const lat = v.latitude ?? v.lat ?? null;
-        const lng = v.longitude ?? v.lng ?? null;
-        arr.push({
-          id,
-          name: (v.zoneId ? `${v.zoneId} • ` : "") + id,
-          zone: v.zoneId || v.zone || "",
-          lat, lng,
-          gatewayId: v.gatewayId || "—",
-          lastUpdate: v.timestamp || v.lastUpdate || ""
-        });
-      }
-      beacons = arr;
-      document.getElementById("lastSync").textContent =
-        "Last sync: " + new Date().toLocaleTimeString();
-      render();
-    }
-
-    // 3) Live subscription
-    db.ref("/Tracking").on("value", (snap)=>{
-      const data = snap.val() || {};
-      setBeaconsFromTracking(data);
-      console.log("Firebase snapshot:", data);
-    }, (err)=>{
-      console.error("Firebase read error:", err);
-      toast("Firebase read error: " + err.message);
-    });
+    firebaseDb = firebase.database();
+    // Start listeners once DB is ready
+    attachLiveReaders();
   } catch (e) {
     console.error("Firebase init error:", e);
+    toast("Firebase init error: " + (e?.message || e));
   }
 })();
 
-/* ---------- Boot ---------- */
+// Helper: map /Tracking object → beacons[]
+function setBeaconsFromTracking(obj){
+  const arr = [];
+  for (const id in (obj||{})) {
+    const v = obj[id] || {};
+    const lat = v.latitude ?? v.lat ?? null;
+    const lng = v.longitude ?? v.lng ?? null;
+    arr.push({
+      id,
+      name: (v.zoneId ? `${v.zoneId} • ` : "") + id,
+      zone: v.zoneId || v.zone || "",
+      lat, lng,
+      gatewayId: v.gatewayId || "—",
+      lastUpdate: v.timestamp || v.lastUpdate || ""
+    });
+  }
+  beacons = arr;
+  document.getElementById("lastSync").textContent = "Last sync: " + new Date().toLocaleTimeString();
+  render();
+}
+
+// 2) Live subscriptions
+function attachLiveReaders(){
+  if (!firebaseDb) return;
+  const ref = firebaseDb.ref("/Tracking");
+
+  // full snapshot (first load + any replace)
+  ref.on("value", (snap)=>{
+    const data = snap.val() || {};
+    setBeaconsFromTracking(data);
+    console.log("Firebase value:", data);
+  }, (err)=>{
+    console.error("Firebase read error (value):", err);
+    toast("Firebase read error: " + err.message);
+  });
+
+  // incremental updates (optional but snappy)
+  ref.on("child_changed", (snap)=>{
+    const id = snap.key;
+    const v = snap.val() || {};
+    const lat = v.latitude ?? v.lat ?? null;
+    const lng = v.longitude ?? v.lng ?? null;
+    const idx = beacons.findIndex(b=>b.id===id);
+    const b = {
+      id,
+      name: (v.zoneId ? `${v.zoneId} • ` : "") + id,
+      zone: v.zoneId || v.zone || "",
+      lat, lng,
+      gatewayId: v.gatewayId || "—",
+      lastUpdate: v.timestamp || v.lastUpdate || ""
+    };
+    if (idx>=0) beacons[idx] = { ...beacons[idx], ...b }; else beacons.push(b);
+    render();
+  });
+
+  ref.on("child_removed", (snap)=>{
+    const id = snap.key;
+    beacons = beacons.filter(b=>b.id!==id);
+    render();
+  });
+}
+
+// 3) Safe writer (used when uibuilder is not present)
+function saveToFirebase(p){
+  if (!firebaseDb) {
+    toast("Firebase not initialized");
+    console.error("Firebase not initialized");
+    return;
+  }
+  if (!p?.trolleyId) {
+    toast("Missing trolleyId");
+    return;
+  }
+  const path = `/Tracking/${p.trolleyId}`;
+  firebaseDb.ref(path).set({
+    zoneId: p.zoneId,
+    trolleyId: p.trolleyId,
+    latitude: p.latitude,
+    longitude: p.longitude,
+    rssi: p.rssi,
+    timestamp: p.timestamp,
+    gatewayId: p.gatewayId || "—"
+  }).then(()=>{
+    toast("Saved to Firebase");
+  }).catch(err=>{
+    console.error("Firebase write failed:", err);
+    toast("Write failed: " + err.message);
+  });
+}
+
+/* ---------- Boot (kept) ---------- */
 refresh();
 setInterval(refresh, AUTO_REFRESH_MS);
 </script>
 </body>
 </html>
+
