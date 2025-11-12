@@ -1,4 +1,4 @@
-<!doctype html>
+\<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8" />
@@ -14,6 +14,10 @@
 
 <!-- uibuilder client for Node-RED -->
 <script src="/uibuilder/uibuilder.iife.min.js"></script>
+
+<!-- ✅ Firebase compat SDKs (no need for type="module") -->
+<script src="https://www.gstatic.com/firebasejs/11.0.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/11.0.1/firebase-database-compat.js"></script>
 
 <style>
 :root{
@@ -421,7 +425,7 @@ function render(){
   renderStats();
 }
 
-/* ---------- Initial / fallback data ---------- */
+/* ---------- Initial / fallback data (KEPT) ---------- */
 async function fetchBeacons(){
   try{
     const r = await fetch(API_URL);
@@ -694,6 +698,64 @@ if (ui && typeof ui.onChange === "function") {
     }
   });
 }
+
+/* -------------------------------------------------------
+   ✅ NEW: Firebase live reader (kept everything else)
+   ------------------------------------------------------- */
+(function initFirebaseLive(){
+  // 1) Your web app config (fill these)
+  const firebaseConfig = {
+    apiKey: "YOUR_API_KEY",
+    authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+    databaseURL: "https://YOUR_PROJECT_ID-default-rtdb.asia-southeast1.firebasedatabase.app",
+    projectId: "YOUR_PROJECT_ID",
+    storageBucket: "YOUR_PROJECT_ID.appspot.com",
+    messagingSenderId: "XXXXXXXXXXXX",
+    appId: "1:XXXXXXXXXXXX:web:YYYYYYYYYYYYYY"
+  };
+
+  try {
+    // Guard against double init
+    if (firebase.apps?.length === 0) {
+      firebase.initializeApp(firebaseConfig);
+    }
+    const db = firebase.database();
+
+    // 2) Helper: /Tracking object -> beacons[]
+    function setBeaconsFromTracking(obj){
+      const arr = [];
+      for (const id in (obj||{})) {
+        const v = obj[id] || {};
+        const lat = v.latitude ?? v.lat ?? null;
+        const lng = v.longitude ?? v.lng ?? null;
+        arr.push({
+          id,
+          name: (v.zoneId ? `${v.zoneId} • ` : "") + id,
+          zone: v.zoneId || v.zone || "",
+          lat, lng,
+          gatewayId: v.gatewayId || "—",
+          lastUpdate: v.timestamp || v.lastUpdate || ""
+        });
+      }
+      beacons = arr;
+      document.getElementById("lastSync").textContent =
+        "Last sync: " + new Date().toLocaleTimeString();
+      render();
+    }
+
+    // 3) Live subscription
+    db.ref("/Tracking").on("value", (snap)=>{
+      const data = snap.val() || {};
+      setBeaconsFromTracking(data);
+      console.log("Firebase snapshot:", data);
+    }, (err)=>{
+      console.error("Firebase read error:", err);
+      toast("Firebase read error: " + err.message);
+    });
+  } catch (e) {
+    console.error("Firebase init error:", e);
+  }
+})();
 
 /* ---------- Boot ---------- */
 refresh();
