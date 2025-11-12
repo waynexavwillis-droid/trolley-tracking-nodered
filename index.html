@@ -29,7 +29,7 @@ input,select,button{background:#0c1322;border:1px solid var(--chip-br);color:var
 input::placeholder{color:#72819a}
 select option{background:#0b1220;color:var(--text)}
 button.accent{background:var(--accent);color:#0b0f15;border:none}
-button.ghost{background:#0c1322;color:var(--text);border:1px solid var(--chip-br)}
+button.ghost{background:#0c1322;color:#fff;border:1px solid var(--chip-br)}
 button.danger{background:var(--danger);color:#fff;border:none}
 button:disabled{opacity:.6;cursor:not-allowed}
 .small{font-size:12px}
@@ -214,7 +214,7 @@ hr{border:none;border-top:1px solid var(--border);margin:10px 0}
 <script>
 /* ---------- Config ---------- */
 const API_URL = "/api/beacons";          // optional fallback (may 404 on GitHub Pages)
-const ENABLE_POST = false;                 // using Firebase via uibuilder
+const ENABLE_POST = false;               // using Firebase via uibuilder
 const AUTO_REFRESH_MS = 10000;
 
 /* ---------- uibuilder (safe) ---------- */
@@ -262,7 +262,7 @@ const toDeg = r => r * 180 / Math.PI;
 function haversine(aLat,aLng,bLat,bLng){
   const R = 6371000;
   const dLat = toRad(bLat-aLat), dLng = toRad(bLng-aLng);
-  // ✅ FIX: Math.sin (was `math.sin` which crashed all JS and blocked Firebase init)
+  /* ✅ FIX: Math.sin (was `math.sin` previously) */
   const s = Math.sin(dLat/2)**2 + Math.cos(toRad(aLat))*Math.cos(toRad(bLat))*Math.sin(dLng/2)**2;
   return 2 * R * Math.asin(Math.sqrt(s));
 }
@@ -293,7 +293,7 @@ document.getElementById("btnDelete").onclick = () => { if(!selectedId) return; c
 document.getElementById("c_ok").onclick = async () => {
   const id = selectedId; confirmBox.style.display = "none"; if(!id) return;
 
-  // Try to delete in Firebase first
+  // Delete in Firebase first
   try{
     if(!firebaseDb){ throw new Error("Firebase not initialised"); }
     await firebaseDb.ref(`/Tracking/${id}`).remove();
@@ -304,7 +304,7 @@ document.getElementById("c_ok").onclick = async () => {
     return; // don't mutate local list if remote failed
   }
 
-  // Local UI clean-up (the live listener will also refresh state)
+  // Local UI clean-up (live listener will also refresh state)
   beacons = beacons.filter(b=>b.id!==id);
   render();
   document.getElementById("details").style.display = "none";
@@ -406,14 +406,7 @@ let firebaseDb = null;
     measurementId: "G-RQ00F6KMXC"
   };
 
-  const placeholders = Object.values(firebaseConfig).some(v => String(v).startsWith("REPLACE_"));
   try{
-    if (placeholders){
-      console.error("❌ Firebase config is incomplete. Fill in apiKey / appId / messagingSenderId.");
-      toast("Missing Firebase config — open console");
-      return; // don't proceed
-    }
-
     if (firebase.apps.length === 0) firebase.initializeApp(firebaseConfig);
     firebaseDb = firebase.database();
 
@@ -552,3 +545,5 @@ setInterval(refresh, AUTO_REFRESH_MS);
 </script>
 </body>
 </html>
+
+
