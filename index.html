@@ -1,1 +1,705 @@
-<!doctype html> <html lang="en"> <head> <meta charset="utf-8" /> <title>GPS Tracking • Terminal & Beacon</title> <meta name="viewport" content="width=device-width, initial-scale=1" /> <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" /> <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script> <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css"> <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css"> <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script> <!-- uibuilder client for Node-RED --> <script src="/uibuilder/uibuilder.iife.min.js"></script> <style> :root{ --bg:#0b0f15; --panel:#0f172a; --panel-2:#111827; --text:#e5e7eb; --muted:#9aa4b2; --border:#1f2937; --accent:#7c9cff; --accent-2:#22c55e; --danger:#ef4444; --chip:#0b1220; --chip-br:#1c2638; } *{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--text);font-family:Inter,ui-sans-serif,system-ui,Segoe UI,Roboto,Arial;} header{position:sticky;top:0;z-index:10;background:linear-gradient(180deg,rgba(17,24,39,.9),rgba(17,24,39,.7));backdrop-filter:blur(6px); border-bottom:1px solid var(--border);display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:10px 14px;} header h1{font-size:16px;margin:0;font-weight:700;letter-spacing:.2px;} input,select,button{background:#0c1322;border:1px solid var(--chip-br);color:var(--text);padding:8px 10px;border-radius:10px;font-size:14px;outline:none;} input::placeholder{color:#72819a} select option{background:#0b1220;color:var(--text)} button.accent{background:var(--accent);color:#0b0f15;border:none;} button.ghost{background:#0c1322;color:var(--text);border:1px solid var(--chip-br);} button.danger{background:var(--danger);color:#fff;border:none;} button:disabled{opacity:.6;cursor:not-allowed} .small{font-size:12px} .muted{color:var(--muted)} main{display:grid;grid-template-columns:1fr 380px;height:calc(100vh - 58px);} #map{width:100%;height:100%;} aside{background:var(--panel);border-left:1px solid var(--border);padding:14px;overflow:auto} .card{background:var(--panel-2);border:1px solid var(--border);border-radius:16px;padding:12px;margin-bottom:12px; box-shadow:0 1px 0 rgba(255,255,255,0.02),0 8px 24px rgba(0,0,0,.35);} .row{display:flex;justify-content:space-between;gap:8px;align-items:center;} hr{border:none;border-top:1px solid var(--border);margin:10px 0;} .pill{display:inline-block;padding:2px 8px;border-radius:999px;font-size:12px;border:1px solid var(--chip-br); background:var(--chip);color:#c9d7ff} .list{display:flex;flex-direction:column;gap:8px;max-height:420px;overflow:auto;} .item{border:1px solid var(--chip-br);border-radius:10px;padding:8px 10px;cursor:pointer;background:#0b1220;} .item:hover{background:#0e172a;border-color:#2a3a58;} .toast{position:fixed;right:12px;bottom:12px;background:#0b1220;border:1px solid var(--chip-br);color:#fff; padding:8px 12px;border-radius:10px;opacity:0;transform:translateY(10px);transition:.25s;z-index:1200;font-size:13px;} .toast.show{opacity:1;transform:translateY(0);} .banner{position:absolute;left:50%;transform:translateX(-50%);top:70px;background:#0b1220;border:1px solid var(--chip-br); color:#fff;padding:6px 10px;border-radius:999px;font-size:13px;display:none;z-index:600;} .confirm{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;align-items:center;justify-content:center;z-index:1200;} .dialog{background:var(--panel-2);border:1px solid var(--border);border-radius:14px;padding:16px;width:min(420px,90vw);} .progress-row{display:flex;align-items:center;gap:10px;margin:8px 0;} .progress-label{width:68px;color:var(--muted);font-size:12px;} .progress-bar{flex:1;height:8px;border-radius:999px;background:#0b1220;border:1px solid var(--chip-br);overflow:hidden} .progress-fill{height:100%;background:linear-gradient(90deg,var(--accent),#9ea8ff);} .quick-filters{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:8px} .quick-filters button{padding:10px 0;border-radius:12px;border:1px solid var(--chip-br);background:#0b1220;cursor:pointer} .quick-filters button.active{border-color:var(--accent);box-shadow:0 0 0 2px rgba(124,156,255,.15) inset} /* Finder (YOU circle + proportional rotating arrow) */ #finder{position:fixed;inset:0;display:none;z-index:1400; background:radial-gradient(1200px 1200px at 50% -200px,#0b0f15,#0f172a 70%,#0b0f15); align-items:center;justify-content:center;flex-direction:column;gap:18px;} .finder-title{text-align:center} #viz{width:260px;height:260px;filter:drop-shadow(0 12px 32px rgba(0,0,0,.45));} #arrowSpin{transform-origin:50% 50%;transition:transform .08s linear;} .finder-chip{display:inline-block;border:1px solid var(--chip-br);background:#0b1220;border-radius:999px; padding:6px 10px;color:#9aa4b2;font-size:13px} .finder-cta{display:flex;gap:10px;margin-top:8px;justify-content:center} @media(max-width:980px){ main{grid-template-columns:1fr;} aside{height:420px} #map{height:calc(100vh - 478px)} } </style> </head> <body> <header> <h1>Terminal Beacon Map</h1> <input id="search" placeholder="Search beacon…" /> <select id="zoneFilter"> <option value="">All zones</option> <option>Zone A</option><option>Zone B</option><option>Zone C</option> </select> <button id="refresh" class="accent">Refresh</button> <button id="addBtn" class="accent">Add Beacon 😊</button> <span class="muted small" id="lastSync">Last sync: —</span> </header> <div class="banner" id="placementBanner">Placement mode – click on map to place new beacon • Esc to cancel</div> <main> <div id="map"></div> <aside> <!-- Total Beacons / Zone Summary --> <div class="card" id="statsCard"> <div class="row" style="align-items:flex-end;"> <div> <div class="small muted" style="letter-spacing:.12em;text-transform:uppercase">Total number of Beacons</div> <div style="font-size:28px;font-weight:800;margin-top:4px" id="totalCount">0</div> </div> <span class="pill" id="activeZonePill">All zones</span> </div> <div class="quick-filters" style="margin-top:10px"> <button data-zone="" class="zf active">All</button> <button data-zone="Zone A" class="zf">Zone A</button> <button data-zone="Zone B" class="zf">Zone B</button> <button data-zone="Zone C" class="zf">Zone C</button> </div> <div style="margin-top:12px" id="zoneProgress"></div> <div class="small muted" style="margin-top:6px">Overview shows count share by zone (relative to max zone count).</div> </div> <!-- Overview list --> <div class="card"> <div class="row"> <b>Overview</b> <span class="small muted" id="overviewCount">0 shown</span> </div> <div id="overviewZoneLine" class="small muted" style="margin:6px 0 8px 0;">All zones</div> <div id="overviewList" class="list"></div> <div id="overviewEmpty" class="small muted" style="display:none;">No beacons in this filter.</div> </div> <!-- Details placeholder --> <div class="card" id="detailsEmpty"> <b>No beacon selected</b> <div class="muted small">Click a beacon or a list item for details.</div> </div> <!-- Details --> <div class="card" id="details" style="display:none"> <div class="row"> <div> <div id="d_name" style="font-weight:800;">—</div> <div class="muted small">ID: <span id="d_id">—</span></div> </div> <span id="d_zone" class="pill">—</span> </div> <hr> <div class="kv" style="display:grid;grid-template-columns:120px 1fr;gap:6px 10px;font-size:14px;"> <div class="muted">Gateway</div><div id="d_gateway">—</div> <div class="muted">Last Update</div><div id="d_updated">—</div> <div class="muted">Coords</div><div id="d_coords">—</div> </div> <hr> <div class="row"> <span class="small muted">Actions</span> <div style="display:flex;gap:8px;"> <button id="btnSearch" class="accent">Search</button> <button id="btnDelete" class="danger">Delete</button> </div> </div> </div> </aside> </main> <!-- Add Beacon Modal: Zone ID (select) + Trolley ID --> <div id="modalBackdrop" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45); z-index:1000;display:flex;align-items:center;justify-content:center;"> <div class="dialog"> <h3 style="margin:0 0 6px 0">Add Beacon 😊</h3> <p class="muted" style="margin:0 0 10px 0"> Select Zone ID and enter Trolley ID. After Continue, click on the map to place the beacon. </p> <label class="small muted">Zone ID</label> <select id="m_zoneId" style="width:100%;margin-bottom:10px;"> <option value="">Select a Zone</option> <option value="T1-ZONE-A">T1-ZONE-A</option> <option value="Zone A">Zone A</option> <option value="Zone B">Zone B</option> <option value="Zone C">Zone C</option> </select> <label class="small muted">Trolley ID</label> <input id="m_trolleyId" placeholder="e.g. T-TEST-002" style="width:100%;"> <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:14px;"> <button id="m_cancel" class="ghost">Cancel</button> <button id="m_continue" class="accent">Continue</button> </div> </div> </div> <!-- Confirm Delete --> <div id="confirm" class="confirm"> <div class="dialog"> <h3 style="margin:0 0 6px 0">Remove beacon?</h3> <p class="muted" style="margin:0">This will permanently delete the beacon from the database.</p> <div class="row" style="justify-content:flex-end;gap:8px;margin-top:12px;"> <button id="c_cancel" class="ghost">Cancel</button> <button id="c_ok" class="danger">Delete</button> </div> </div> </div> <!-- Finder overlay --> <div id="finder"> <div class="finder-title"> <div class="small muted" style="letter-spacing:.18em;text-transform:uppercase;">Navigate to</div> <div id="findTarget" style="font-size:24px;font-weight:800;margin-top:4px">—</div> </div> <svg id="viz" viewBox="0 0 200 200" aria-label="Direction finder"> <circle cx="100" cy="100" r="84" fill="none" stroke="#1f2a44" stroke-width="12"/> <circle cx="100" cy="100" r="22" fill="url(#youGrad)" stroke="#284265" stroke-width="1.5"/> <g id="arrowSpin"> <polygon points="100,16 112,44 108,44 108,72 92,72 92,44 88,44" fill="#7c9cff" stroke="#aab6ff" stroke-width="1.2"/> </g> <defs> <radialGradient id="youGrad" cx="50%" cy="45%" r="60%"> <stop offset="0%" stop-color="#2dd4bf"/> <stop offset="100%" stop-color="#0ea5e9"/> </radialGradient> </defs> </svg> <div class="finder-chip" id="findDistance">— m</div> <div class="finder-cta"> <button id="findExit" class="ghost">Exit</button> <button id="findRecenter" class="accent">Recenter</button> </div> <div class="small muted" style="margin-top:8px" id="findHint">Move your phone to calibrate direction…</div> </div> <div id="toast" class="toast">Saved</div> <script> /* ---------- Config ---------- */ const API_URL = "/api/beacons"; // optional fallback const ENABLE_POST = false; // using Firebase via uibuilder const AUTO_REFRESH_MS = 10000; /* ---------- uibuilder ---------- */ let ui = null; if (window.uibuilder) { ui = window.uibuilder; } /* ---------- Map (Temasek Polytechnic) ---------- */ const TP_CENTER = [1.3455, 103.9323]; const map = L.map("map").setView(TP_CENTER, 17); L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19, attribution: "&copy; OSM" }).addTo(map); const clusters = L.markerClusterGroup({ disableClusteringAtZoom: 19 }); map.addLayer(clusters); /* ---------- State ---------- */ let beacons = []; const idToMarker = new Map(); let searchText = ""; let zoneFilter = ""; let placementMode = false; let pendingBeacon = null; let selectedId = null; let selectedBeacon = null; /* Finder state */ let watchId = null; let headingDeg = null; let userMarker = null; let targetLatLng = null; let orientationHandler = null; /* ---------- Helpers ---------- */ function escapeH(s){ return String(s ?? "").replace(/[&<>"']/g, m => ({ "&":"&amp;","<":"&lt;","<": "&lt;",">":"&gt;","\"":"&quot;","'":"&#39;" }[m])); } function popupHtml(b){ return <b>${escapeH(b.name)}</b> <span class="pill">${escapeH(b.zone)}</span><br><small>ID:${escapeH(b.id)}</small>; } function fits(b){ const zoneOK = !zoneFilter || String(b.zone||"").toLowerCase() === zoneFilter.toLowerCase(); const text = ((b.name||"")+" "+(b.id||"")).toLowerCase(); const searchOK = !searchText || text.includes(searchText.toLowerCase()); return zoneOK && searchOK; } function toast(t){ const el = document.getElementById("toast"); el.textContent = t; el.classList.add("show"); setTimeout(()=>el.classList.remove("show"),1500); } const toRad = d => d * Math.PI / 180; const toDeg = r => r * 180 / Math.PI; function haversine(aLat,aLng,bLat,bLng){ const R = 6371000; const dLat = toRad(bLat-aLat), dLng = toRad(bLng-aLng); const s = Math.sin(dLat/2)**2 + Math.cos(toRad(aLat))*Math.cos(toRad(bLat))*Math.sin(dLng/2)**2; return 2 * R * Math.asin(Math.sqrt(s)); } function bearingBetween(aLat,aLng,bLat,bLng){ const y = Math.sin(toRad(bLng-aLng))*Math.cos(toRad(bLat)); const x = Math.cos(toRad(aLat))*Math.sin(toRad(bLat)) - Math.sin(toRad(aLat))*Math.cos(toRad(bLat))*Math.cos(toRad(bLng-aLng)); return (toDeg(Math.atan2(y,x)) + 360) % 360; } /* ---------- Details ---------- */ function showDetails(b){ selectedId = b.id; selectedBeacon = b; document.getElementById("detailsEmpty").style.display = "none"; const d = document.getElementById("details"); d.style.display = "block"; d.querySelector("#d_name").textContent = b.name || "—"; d.querySelector("#d_id").textContent = b.id || "—"; d.querySelector("#d_zone").textContent = b.zone || "—"; d.querySelector("#d_gateway").textContent = b.gatewayId || "—"; d.querySelector("#d_updated").textContent = b.lastUpdate || "—"; d.querySelector("#d_coords").textContent = (b.lat!=null && b.lng!=null) ? ${(+b.lat).toFixed(5)}, ${(+b.lng).toFixed(5)} : "—"; } /* ---------- Delete flow ---------- */ const confirmBox = document.getElementById("confirm"); document.getElementById("c_cancel").onclick = () => confirmBox.style.display = "none"; document.getElementById("btnDelete").onclick = () => { if(!selectedId) return; confirmBox.style.display = "flex"; }; document.getElementById("c_ok").onclick = async () => { const id = selectedId; confirmBox.style.display = "none"; if(!id) return; beacons = beacons.filter(b=>b.id!==id); render(); document.getElementById("details").style.display = "none"; document.getElementById("detailsEmpty").style.display = "block"; toast("Beacon removed locally"); }; /* ---------- Stats ---------- */ function renderStats(){ const total = beacons.length; document.getElementById("totalCount").textContent = total; const counts = {"Zone A":0,"Zone B":0,"Zone C":0}; beacons.forEach(b => { if(counts[b.zone] !== undefined) counts[b.zone]++; }); const max = Math.max(1, ...Object.values(counts)); const zEl = document.getElementById("zoneProgress"); zEl.innerHTML = ""; Object.entries(counts).forEach(([label,val])=>{ const row = document.createElement("div"); row.className = "progress-row"; row.innerHTML = <div class="progress-label">${label}</div> <div class="progress-bar"><div class="progress-fill" style="width:${(val/max)*100}%"></div></div> <div class="small" style="width:34px;text-align:right">${val}</div>; zEl.appendChild(row); }); document.getElementById("activeZonePill").textContent = zoneFilter || "All zones"; document.querySelectorAll(".quick-filters .zf").forEach(btn=>{ btn.classList.toggle("active",(btn.dataset.zone||"")===zoneFilter); }); } /* ---------- Markers & Lists ---------- */ function renderMarkers(){ clusters.clearLayers(); idToMarker.clear(); beacons.forEach(b=>{ if(!fits(b) || b.lat == null || b.lng == null) return; const m = L.circleMarker([b.lat,b.lng],{ radius:8,color:"#7c9cff",fillColor:"#7c9cff",fillOpacity:.9,weight:2 }) .on("click",()=>{ showDetails(b); m.openPopup(); }) .bindPopup(popupHtml(b)); idToMarker.set(b.id,m); clusters.addLayer(m); }); } function renderOverview(){ const listEl = document.getElementById("overviewList"); const emptyEl = document.getElementById("overviewEmpty"); const zoneLine = document.getElementById("overviewZoneLine"); listEl.innerHTML = ""; const filtered = beacons.filter(fits).sort((a,b)=>String(a.name).localeCompare(String(b.name))); zoneLine.textContent = zoneFilter ? Zone: ${zoneFilter} : "All zones"; document.getElementById("overviewCount").textContent = ${filtered.length} shown; if(filtered.length===0){ emptyEl.style.display = "block"; return; } emptyEl.style.display = "none"; filtered.forEach(b=>{ const div = document.createElement("div"); div.className = "item"; div.innerHTML = <div class="row"> <div><b>${escapeH(b.name||"Beacon")}</b> <span class="pill">${escapeH(b.zone||"-")}</span></div> <div class="small muted">${escapeH(b.id||"-")}</div> </div> <div class="small muted"> ${(b.lat!=null&&b.lng!=null)?${(+b.lat).toFixed(5)}, ${(+b.lng).toFixed(5)}:"—"} · ${escapeH(b.lastUpdate||"—")} </div>; div.onclick = ()=>{ const m = idToMarker.get(b.id); if(m){ map.panTo([b.lat,b.lng]); m.openPopup(); } showDetails(b); }; listEl.appendChild(div); }); } function render(){ renderMarkers(); renderOverview(); renderStats(); } /* ---------- Initial / fallback data ---------- */ async function fetchBeacons(){ try{ const r = await fetch(API_URL); if(!r.ok) throw 0; const j = await r.json(); return Array.isArray(j)?j:[]; }catch{ return []; } } async function refresh(){ const fetched = await fetchBeacons(); const mapB = new Map(beacons.map(b=>[b.id,b])); fetched.forEach(fb=>mapB.set(fb.id,fb)); beacons = [...mapB.values()]; document.getElementById("lastSync").textContent = "Last sync: " + new Date().toLocaleTimeString(); render(); } /* ---------- UI bindings ---------- */ document.getElementById("search").oninput = e=>{ searchText = e.target.value.trim(); render(); }; document.getElementById("zoneFilter").onchange = e=>{ zoneFilter = e.target.value.trim(); render(); }; document.getElementById("refresh").onclick = refresh; /* Quick filters */ document.querySelectorAll(".quick-filters").forEach(group=>{ group.addEventListener("click",e=>{ const btn = e.target.closest(".zf"); if(!btn) return; zoneFilter = btn.dataset.zone || ""; document.getElementById("zoneFilter").value = zoneFilter; render(); }); }); /* ---------- Add Beacon (ZoneID + TrolleyID → Firebase via uibuilder) ---------- */ const modal = document.getElementById("modalBackdrop"); const banner = document.getElementById("placementBanner"); document.getElementById("addBtn").onclick = () => { modal.style.display = "flex"; }; document.getElementById("m_cancel").onclick = () => { modal.style.display = "none"; }; document.getElementById("m_continue").onclick = () => { const zoneId = document.getElementById("m_zoneId").value.trim(); const trolleyId = document.getElementById("m_trolleyId").value.trim(); if(!zoneId || !trolleyId){ toast("Please select Zone ID and enter Trolley ID"); return; } modal.style.display = "none"; placementMode = true; pendingBeacon = { zoneId, trolleyId }; banner.style.display = "block"; }; window.onkeydown = e => { if(e.key === "Escape"){ placementMode = false; pendingBeacon = null; banner.style.display = "none"; modal.style.display = "none"; } }; map.on("click",async e=>{ if(!placementMode || !pendingBeacon) return; placementMode = false; banner.style.display = "none"; const { zoneId, trolleyId } = pendingBeacon; const name = ${zoneId} • ${trolleyId}; const nowIso = new Date().toISOString(); const b = { id: trolleyId, name, zone: zoneId, lat: e.latlng.lat, lng: e.latlng.lng, gatewayId: "—", lastUpdate: nowIso }; beacons.push(b); render(); showDetails(b); const fbPayload = { zoneId, trolleyId, latitude: b.lat, longitude: b.lng, rssi: -24, timestamp: nowIso }; if(ui && typeof ui.send === "function"){ ui.send({ payload: fbPayload }); toast("Beacon sent to Firebase"); }else if(window.uibuilder && typeof window.uibuilder.send === "function"){ window.uibuilder.send({ payload: fbPayload }); toast("Beacon sent to Firebase"); }else{ console.warn("uibuilder not available; not sent to Node-RED"); toast("Added locally (uibuilder not connected)"); } pendingBeacon = null; }); /* ---------- Finder (Find My-style arrow) ---------- */ const finderEl = document.getElementById("finder"); const findTargetEl = document.getElementById("findTarget"); const findDistanceEl = document.getElementById("findDistance"); const findHintEl = document.getElementById("findHint"); const arrowSpin = document.getElementById("arrowSpin"); function setArrowRotation(deg){ arrowSpin.style.transform = rotate(${deg}deg); } function varAccent2(){ return getComputedStyle(document.documentElement).getPropertyValue('--accent-2').trim() || '#22c55e'; } function startFinder(beacon){ if(!beacon || beacon.lat==null || beacon.lng==null){ toast("Beacon has no coordinates"); return; } targetLatLng = [+beacon.lat, +beacon.lng]; findTargetEl.textContent = beacon.name || beacon.id || "Target"; finderEl.style.display = "flex"; map.panTo(targetLatLng); if(!navigator.geolocation){ findHintEl.textContent = "Geolocation not supported."; return; } userMarker = userMarker || L.circleMarker( map.getCenter(), {radius:7,color:varAccent2(),fillColor:varAccent2(),fillOpacity:.95} ).addTo(map); watchId = navigator.geolocation.watchPosition(pos=>{ const { latitude, longitude, heading } = pos.coords; const aLat = latitude, aLng = longitude; const bLat = targetLatLng[0], bLng = targetLatLng[1]; const dist = haversine(aLat,aLng,bLat,bLng); const bearing = bearingBetween(aLat,aLng,bLat,bLng); const deviceHeading = (headingDeg!=null) ? headingDeg : (Number.isFinite(heading) ? heading : null); const relative = (deviceHeading!=null) ? ((bearing - deviceHeading + 360) % 360) : bearing; setArrowRotation(relative); findDistanceEl.textContent = dist>1000 ? (dist/1000).toFixed(2)+" km" : Math.round(dist)+" m"; userMarker.setLatLng([aLat,aLng]); }, err=>{ findHintEl.textContent = "Location error: " + err.message; }, {enableHighAccuracy:true,maximumAge:1000,timeout:10000}); orientationHandler = e=>{ if(typeof e.webkitCompassHeading === "number"){ headingDeg = e.webkitCompassHeading; }else if(e.absolute && e.alpha!=null){ headingDeg = 360 - e.alpha; } }; if(window.DeviceOrientationEvent){ if(typeof DeviceOrientationEvent.requestPermission === "function"){ DeviceOrientationEvent.requestPermission() .then(state=>{ if(state === "granted"){ window.addEventListener("deviceorientation",orientationHandler,true); }else{ findHintEl.textContent = "Compass permission denied; arrow uses map north."; } }) .catch(()=>{ findHintEl.textContent = "Compass not available; arrow uses map north."; }); }else{ window.addEventListener("deviceorientation",orientationHandler,true); } }else{ findHintEl.textContent = "No compass API; arrow uses map north."; } } function stopFinder(){ finderEl.style.display = "none"; if(watchId!=null){ navigator.geolocation.clearWatch(watchId); watchId = null; } if(orientationHandler){ window.removeEventListener("deviceorientation",orientationHandler,true); orientationHandler = null; } headingDeg = null; targetLatLng = null; } document.getElementById("btnSearch").onclick = () => { if(selectedBeacon) startFinder(selectedBeacon); }; document.getElementById("findExit").onclick = () => stopFinder(); document.getElementById("findRecenter").onclick = () => { if(userMarker){ map.panTo(userMarker.getLatLng()); } }; /* ---------- Listen for Node-RED / Firebase updates via uibuilder ---------- */ if (ui && typeof ui.onChange === "function") { ui.onChange('msg', (msg) => { console.log('uibuilder msg received:', msg); if (msg.topic === 'beacon/bulkUpdate' && Array.isArray(msg.payload)) { msg.payload.forEach(p => { const id = p.trolleyId || p.id; if (!id) return; const idx = beacons.findIndex(b => b.id === id); const b = { id, name: (p.zoneId ? p.zoneId + ' • ' : '') + id, zone: p.zoneId || '', lat: p.latitude ?? p.lat, lng: p.longitude ?? p.lng, gatewayId: p.gatewayId || '—', lastUpdate: p.timestamp || new Date().toISOString() }; if (idx >= 0) beacons[idx] = { ...beacons[idx], ...b }; else beacons.push(b); }); render(); } if (msg.topic === 'beacon/update' && msg.payload) { const p = msg.payload; const id = p.trolleyId || p.id; if (!id) return; const idx = beacons.findIndex(b => b.id === id); const b = { id, name: (p.zoneId ? p.zoneId + ' • ' : '') + id, zone: p.zoneId || '', lat: p.latitude ?? p.lat, lng: p.longitude ?? p.lng, gatewayId: p.gatewayId || '—', lastUpdate: p.timestamp || new Date().toISOString() }; if (idx >= 0) beacons[idx] = { ...beacons[idx], ...b }; else beacons.push(b); render(); } }); } /* ---------- Boot ---------- */ refresh(); setInterval(refresh, AUTO_REFRESH_MS); </script> </body> </html>
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>GPS Tracking • Terminal & Beacon</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css">
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css">
+<script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+
+<!-- uibuilder client for Node-RED -->
+<script src="/uibuilder/uibuilder.iife.min.js"></script>
+
+<style>
+:root{
+  --bg:#0b0f15; --panel:#0f172a; --panel-2:#111827; --text:#e5e7eb; --muted:#9aa4b2;
+  --border:#1f2937; --accent:#7c9cff; --accent-2:#22c55e; --danger:#ef4444; --chip:#0b1220; --chip-br:#1c2638;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font-family:Inter,ui-sans-serif,system-ui,Segoe UI,Roboto,Arial;}
+header{position:sticky;top:0;z-index:10;background:linear-gradient(180deg,rgba(17,24,39,.9),rgba(17,24,39,.7));backdrop-filter:blur(6px);
+  border-bottom:1px solid var(--border);display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:10px 14px;}
+header h1{font-size:16px;margin:0;font-weight:700;letter-spacing:.2px;}
+input,select,button{background:#0c1322;border:1px solid var(--chip-br);color:var(--text);padding:8px 10px;border-radius:10px;font-size:14px;outline:none;}
+input::placeholder{color:#72819a}
+select option{background:#0b1220;color:var(--text)}
+button.accent{background:var(--accent);color:#0b0f15;border:none;}
+button.ghost{background:#0c1322;color:var(--text);border:1px solid var(--chip-br);}
+button.danger{background:var(--danger);color:#fff;border:none;}
+button:disabled{opacity:.6;cursor:not-allowed}
+.small{font-size:12px}
+.muted{color:var(--muted)}
+main{display:grid;grid-template-columns:1fr 380px;height:calc(100vh - 58px);}
+#map{width:100%;height:100%;}
+aside{background:var(--panel);border-left:1px solid var(--border);padding:14px;overflow:auto}
+.card{background:var(--panel-2);border:1px solid var(--border);border-radius:16px;padding:12px;margin-bottom:12px;
+  box-shadow:0 1px 0 rgba(255,255,255,0.02),0 8px 24px rgba(0,0,0,.35);}
+.row{display:flex;justify-content:space-between;gap:8px;align-items:center;}
+hr{border:none;border-top:1px solid var(--border);margin:10px 0;}
+.pill{display:inline-block;padding:2px 8px;border-radius:999px;font-size:12px;border:1px solid var(--chip-br);
+  background:var(--chip);color:#c9d7ff}
+.list{display:flex;flex-direction:column;gap:8px;max-height:420px;overflow:auto;}
+.item{border:1px solid var(--chip-br);border-radius:10px;padding:8px 10px;cursor:pointer;background:#0b1220;}
+.item:hover{background:#0e172a;border-color:#2a3a58;}
+.toast{position:fixed;right:12px;bottom:12px;background:#0b1220;border:1px solid var(--chip-br);color:#fff;
+  padding:8px 12px;border-radius:10px;opacity:0;transform:translateY(10px);transition:.25s;z-index:1200;font-size:13px;}
+.toast.show{opacity:1;transform:translateY(0);}
+.banner{position:absolute;left:50%;transform:translateX(-50%);top:70px;background:#0b1220;border:1px solid var(--chip-br);
+  color:#fff;padding:6px 10px;border-radius:999px;font-size:13px;display:none;z-index:600;}
+.confirm{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;align-items:center;justify-content:center;z-index:1200;}
+.dialog{background:var(--panel-2);border:1px solid var(--border);border-radius:14px;padding:16px;width:min(420px,90vw);}
+.progress-row{display:flex;align-items:center;gap:10px;margin:8px 0;}
+.progress-label{width:68px;color:var(--muted);font-size:12px;}
+.progress-bar{flex:1;height:8px;border-radius:999px;background:#0b1220;border:1px solid var(--chip-br);overflow:hidden}
+.progress-fill{height:100%;background:linear-gradient(90deg,var(--accent),#9ea8ff);}
+.quick-filters{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:8px}
+.quick-filters button{padding:10px 0;border-radius:12px;border:1px solid var(--chip-br);background:#0b1220;cursor:pointer}
+.quick-filters button.active{border-color:var(--accent);box-shadow:0 0 0 2px rgba(124,156,255,.15) inset}
+
+/* Finder (YOU circle + proportional rotating arrow) */
+#finder{position:fixed;inset:0;display:none;z-index:1400;
+  background:radial-gradient(1200px 1200px at 50% -200px,#0b0f15,#0f172a 70%,#0b0f15);
+  align-items:center;justify-content:center;flex-direction:column;gap:18px;}
+.finder-title{text-align:center}
+#viz{width:260px;height:260px;filter:drop-shadow(0 12px 32px rgba(0,0,0,.45));}
+#arrowSpin{transform-origin:50% 50%;transition:transform .08s linear;}
+.finder-chip{display:inline-block;border:1px solid var(--chip-br);background:#0b1220;border-radius:999px;
+  padding:6px 10px;color:#9aa4b2;font-size:13px}
+.finder-cta{display:flex;gap:10px;margin-top:8px;justify-content:center}
+
+@media(max-width:980px){
+  main{grid-template-columns:1fr;}
+  aside{height:420px}
+  #map{height:calc(100vh - 478px)}
+}
+</style>
+</head>
+<body>
+<header>
+  <h1>Terminal Beacon Map</h1>
+  <input id="search" placeholder="Search beacon…" />
+  <select id="zoneFilter">
+    <option value="">All zones</option>
+    <option>Zone A</option><option>Zone B</option><option>Zone C</option>
+  </select>
+  <button id="refresh" class="accent">Refresh</button>
+  <button id="addBtn" class="accent">Add Beacon 😊</button>
+  <span class="muted small" id="lastSync">Last sync: —</span>
+</header>
+
+<div class="banner" id="placementBanner">Placement mode – click on map to place new beacon • Esc to cancel</div>
+
+<main>
+  <div id="map"></div>
+
+  <aside>
+    <!-- Total Beacons / Zone Summary -->
+    <div class="card" id="statsCard">
+      <div class="row" style="align-items:flex-end;">
+        <div>
+          <div class="small muted" style="letter-spacing:.12em;text-transform:uppercase">Total number of Beacons</div>
+          <div style="font-size:28px;font-weight:800;margin-top:4px" id="totalCount">0</div>
+        </div>
+        <span class="pill" id="activeZonePill">All zones</span>
+      </div>
+      <div class="quick-filters" style="margin-top:10px">
+        <button data-zone="" class="zf active">All</button>
+        <button data-zone="Zone A" class="zf">Zone A</button>
+        <button data-zone="Zone B" class="zf">Zone B</button>
+        <button data-zone="Zone C" class="zf">Zone C</button>
+      </div>
+      <div style="margin-top:12px" id="zoneProgress"></div>
+      <div class="small muted" style="margin-top:6px">Overview shows count share by zone (relative to max zone count).</div>
+    </div>
+
+    <!-- Overview list -->
+    <div class="card">
+      <div class="row">
+        <b>Overview</b>
+        <span class="small muted" id="overviewCount">0 shown</span>
+      </div>
+      <div id="overviewZoneLine" class="small muted" style="margin:6px 0 8px 0;">All zones</div>
+      <div id="overviewList" class="list"></div>
+      <div id="overviewEmpty" class="small muted" style="display:none;">No beacons in this filter.</div>
+    </div>
+
+    <!-- Details placeholder -->
+    <div class="card" id="detailsEmpty">
+      <b>No beacon selected</b>
+      <div class="muted small">Click a beacon or a list item for details.</div>
+    </div>
+
+    <!-- Details -->
+    <div class="card" id="details" style="display:none">
+      <div class="row">
+        <div>
+          <div id="d_name" style="font-weight:800;">—</div>
+          <div class="muted small">ID: <span id="d_id">—</span></div>
+        </div>
+        <span id="d_zone" class="pill">—</span>
+      </div>
+      <hr>
+      <div class="kv" style="display:grid;grid-template-columns:120px 1fr;gap:6px 10px;font-size:14px;">
+        <div class="muted">Gateway</div><div id="d_gateway">—</div>
+        <div class="muted">Last Update</div><div id="d_updated">—</div>
+        <div class="muted">Coords</div><div id="d_coords">—</div>
+      </div>
+      <hr>
+      <div class="row">
+        <span class="small muted">Actions</span>
+        <div style="display:flex;gap:8px;">
+          <button id="btnSearch" class="accent">Search</button>
+          <button id="btnDelete" class="danger">Delete</button>
+        </div>
+      </div>
+    </div>
+  </aside>
+</main>
+
+<!-- Add Beacon Modal: Zone ID (select) + Trolley ID -->
+<div id="modalBackdrop" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);
+z-index:1000;display:flex;align-items:center;justify-content:center;">
+  <div class="dialog">
+    <h3 style="margin:0 0 6px 0">Add Beacon 😊</h3>
+    <p class="muted" style="margin:0 0 10px 0">
+      Select Zone ID and enter Trolley ID. After Continue, click on the map to place the beacon.
+    </p>
+
+    <label class="small muted">Zone ID</label>
+    <select id="m_zoneId" style="width:100%;margin-bottom:10px;">
+      <option value="">Select a Zone</option>
+      <option value="T1-ZONE-A">T1-ZONE-A</option>
+      <option value="Zone A">Zone A</option>
+      <option value="Zone B">Zone B</option>
+      <option value="Zone C">Zone C</option>
+    </select>
+
+    <label class="small muted">Trolley ID</label>
+    <input id="m_trolleyId" placeholder="e.g. T-TEST-002" style="width:100%;">
+
+    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:14px;">
+      <button id="m_cancel" class="ghost">Cancel</button>
+      <button id="m_continue" class="accent">Continue</button>
+    </div>
+  </div>
+</div>
+
+<!-- Confirm Delete -->
+<div id="confirm" class="confirm">
+  <div class="dialog">
+    <h3 style="margin:0 0 6px 0">Remove beacon?</h3>
+    <p class="muted" style="margin:0">This will permanently delete the beacon from the database.</p>
+    <div class="row" style="justify-content:flex-end;gap:8px;margin-top:12px;">
+      <button id="c_cancel" class="ghost">Cancel</button>
+      <button id="c_ok" class="danger">Delete</button>
+    </div>
+  </div>
+</div>
+
+<!-- Finder overlay -->
+<div id="finder">
+  <div class="finder-title">
+    <div class="small muted" style="letter-spacing:.18em;text-transform:uppercase;">Navigate to</div>
+    <div id="findTarget" style="font-size:24px;font-weight:800;margin-top:4px">—</div>
+  </div>
+
+  <svg id="viz" viewBox="0 0 200 200" aria-label="Direction finder">
+    <circle cx="100" cy="100" r="84" fill="none" stroke="#1f2a44" stroke-width="12"/>
+    <circle cx="100" cy="100" r="22" fill="url(#youGrad)" stroke="#284265" stroke-width="1.5"/>
+    <g id="arrowSpin">
+      <polygon
+        points="100,16 112,44 108,44 108,72 92,72 92,44 88,44"
+        fill="#7c9cff" stroke="#aab6ff" stroke-width="1.2"/>
+    </g>
+    <defs>
+      <radialGradient id="youGrad" cx="50%" cy="45%" r="60%">
+        <stop offset="0%"  stop-color="#2dd4bf"/>
+        <stop offset="100%" stop-color="#0ea5e9"/>
+      </radialGradient>
+    </defs>
+  </svg>
+
+  <div class="finder-chip" id="findDistance">— m</div>
+  <div class="finder-cta">
+    <button id="findExit" class="ghost">Exit</button>
+    <button id="findRecenter" class="accent">Recenter</button>
+  </div>
+  <div class="small muted" style="margin-top:8px" id="findHint">Move your phone to calibrate direction…</div>
+</div>
+
+<div id="toast" class="toast">Saved</div>
+
+<script>
+/* ---------- Config ---------- */
+const API_URL = "/api/beacons";          // optional fallback
+const ENABLE_POST = false;               // using Firebase via uibuilder
+const AUTO_REFRESH_MS = 10000;
+
+/* ---------- uibuilder ---------- */
+let ui = null;
+if (window.uibuilder) {
+  ui = window.uibuilder;
+}
+
+/* ---------- Map (Temasek Polytechnic) ---------- */
+const TP_CENTER = [1.3455, 103.9323];
+const map = L.map("map").setView(TP_CENTER, 17);
+L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+  maxZoom: 19,
+  attribution: "&copy; OSM"
+}).addTo(map);
+const clusters = L.markerClusterGroup({ disableClusteringAtZoom: 19 });
+map.addLayer(clusters);
+
+/* ---------- State ---------- */
+let beacons = [];
+const idToMarker = new Map();
+let searchText = "";
+let zoneFilter = "";
+let placementMode = false;
+let pendingBeacon = null;
+let selectedId = null;
+let selectedBeacon = null;
+
+/* Finder state */
+let watchId = null;
+let headingDeg = null;
+let userMarker = null;
+let targetLatLng = null;
+let orientationHandler = null;
+
+/* ---------- Helpers ---------- */
+function escapeH(s){
+  return String(s ?? "").replace(/[&<>"']/g, m => ({
+    "&":"&amp;","<":"&lt;","<": "&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"
+  }[m]));
+}
+function popupHtml(b){
+  return `<b>${escapeH(b.name)}</b> <span class="pill">${escapeH(b.zone)}</span><br><small>ID:${escapeH(b.id)}</small>`;
+}
+function fits(b){
+  const zoneOK = !zoneFilter || String(b.zone||"").toLowerCase() === zoneFilter.toLowerCase();
+  const text = ((b.name||"")+" "+(b.id||"")).toLowerCase();
+  const searchOK = !searchText || text.includes(searchText.toLowerCase());
+  return zoneOK && searchOK;
+}
+function toast(t){
+  const el = document.getElementById("toast");
+  el.textContent = t;
+  el.classList.add("show");
+  setTimeout(()=>el.classList.remove("show"),1500);
+}
+const toRad = d => d * Math.PI / 180;
+const toDeg = r => r * 180 / Math.PI;
+function haversine(aLat,aLng,bLat,bLng){
+  const R = 6371000;
+  const dLat = toRad(bLat-aLat), dLng = toRad(bLng-aLng);
+  const s = Math.sin(dLat/2)**2 + Math.cos(toRad(aLat))*Math.cos(toRad(bLat))*Math.sin(dLng/2)**2;
+  return 2 * R * Math.asin(Math.sqrt(s));
+}
+function bearingBetween(aLat,aLng,bLat,bLng){
+  const y = Math.sin(toRad(bLng-aLng))*Math.cos(toRad(bLat));
+  const x = Math.cos(toRad(aLat))*Math.sin(toRad(bLat)) -
+            Math.sin(toRad(aLat))*Math.cos(toRad(bLat))*Math.cos(toRad(bLng-aLng));
+  return (toDeg(Math.atan2(y,x)) + 360) % 360;
+}
+
+/* ---------- Details ---------- */
+function showDetails(b){
+  selectedId = b.id;
+  selectedBeacon = b;
+  document.getElementById("detailsEmpty").style.display = "none";
+  const d = document.getElementById("details");
+  d.style.display = "block";
+  d.querySelector("#d_name").textContent = b.name || "—";
+  d.querySelector("#d_id").textContent = b.id || "—";
+  d.querySelector("#d_zone").textContent = b.zone || "—";
+  d.querySelector("#d_gateway").textContent = b.gatewayId || "—";
+  d.querySelector("#d_updated").textContent = b.lastUpdate || "—";
+  d.querySelector("#d_coords").textContent =
+    (b.lat!=null && b.lng!=null) ? `${(+b.lat).toFixed(5)}, ${(+b.lng).toFixed(5)}` : "—";
+}
+
+/* ---------- Delete flow ---------- */
+const confirmBox = document.getElementById("confirm");
+document.getElementById("c_cancel").onclick = () => confirmBox.style.display = "none";
+document.getElementById("btnDelete").onclick = () => {
+  if(!selectedId) return;
+  confirmBox.style.display = "flex";
+};
+document.getElementById("c_ok").onclick = async () => {
+  const id = selectedId;
+  confirmBox.style.display = "none";
+  if(!id) return;
+  beacons = beacons.filter(b=>b.id!==id);
+  render();
+  document.getElementById("details").style.display = "none";
+  document.getElementById("detailsEmpty").style.display = "block";
+  toast("Beacon removed locally");
+};
+
+/* ---------- Stats ---------- */
+function renderStats(){
+  const total = beacons.length;
+  document.getElementById("totalCount").textContent = total;
+  const counts = {"Zone A":0,"Zone B":0,"Zone C":0};
+  beacons.forEach(b => { if(counts[b.zone] !== undefined) counts[b.zone]++; });
+  const max = Math.max(1, ...Object.values(counts));
+  const zEl = document.getElementById("zoneProgress");
+  zEl.innerHTML = "";
+  Object.entries(counts).forEach(([label,val])=>{
+    const row = document.createElement("div");
+    row.className = "progress-row";
+    row.innerHTML = `
+      <div class="progress-label">${label}</div>
+      <div class="progress-bar"><div class="progress-fill" style="width:${(val/max)*100}%"></div></div>
+      <div class="small" style="width:34px;text-align:right">${val}</div>`;
+    zEl.appendChild(row);
+  });
+  document.getElementById("activeZonePill").textContent = zoneFilter || "All zones";
+  document.querySelectorAll(".quick-filters .zf").forEach(btn=>{
+    btn.classList.toggle("active",(btn.dataset.zone||"")===zoneFilter);
+  });
+}
+
+/* ---------- Markers & Lists ---------- */
+function renderMarkers(){
+  clusters.clearLayers();
+  idToMarker.clear();
+  beacons.forEach(b=>{
+    if(!fits(b) || b.lat == null || b.lng == null) return;
+    const m = L.circleMarker([b.lat,b.lng],{
+      radius:8,color:"#7c9cff",fillColor:"#7c9cff",fillOpacity:.9,weight:2
+    })
+      .on("click",()=>{ showDetails(b); m.openPopup(); })
+      .bindPopup(popupHtml(b));
+    idToMarker.set(b.id,m);
+    clusters.addLayer(m);
+  });
+}
+function renderOverview(){
+  const listEl = document.getElementById("overviewList");
+  const emptyEl = document.getElementById("overviewEmpty");
+  const zoneLine = document.getElementById("overviewZoneLine");
+  listEl.innerHTML = "";
+  const filtered = beacons.filter(fits).sort((a,b)=>String(a.name).localeCompare(String(b.name)));
+  zoneLine.textContent = zoneFilter ? `Zone: ${zoneFilter}` : "All zones";
+  document.getElementById("overviewCount").textContent = `${filtered.length} shown`;
+  if(filtered.length===0){
+    emptyEl.style.display = "block";
+    return;
+  }
+  emptyEl.style.display = "none";
+  filtered.forEach(b=>{
+    const div = document.createElement("div");
+    div.className = "item";
+    div.innerHTML = `
+      <div class="row">
+        <div><b>${escapeH(b.name||"Beacon")}</b> <span class="pill">${escapeH(b.zone||"-")}</span></div>
+        <div class="small muted">${escapeH(b.id||"-")}</div>
+      </div>
+      <div class="small muted">
+        ${(b.lat!=null&&b.lng!=null)?`${(+b.lat).toFixed(5)}, ${(+b.lng).toFixed(5)}`:"—"}
+        · ${escapeH(b.lastUpdate||"—")}
+      </div>`;
+    div.onclick = ()=>{
+      const m = idToMarker.get(b.id);
+      if(m){ map.panTo([b.lat,b.lng]); m.openPopup(); }
+      showDetails(b);
+    };
+    listEl.appendChild(div);
+  });
+}
+function render(){
+  renderMarkers();
+  renderOverview();
+  renderStats();
+}
+
+/* ---------- Initial / fallback data ---------- */
+async function fetchBeacons(){
+  try{
+    const r = await fetch(API_URL);
+    if(!r.ok) throw 0;
+    const j = await r.json();
+    return Array.isArray(j)?j:[];
+  }catch{
+    return [];
+  }
+}
+async function refresh(){
+  const fetched = await fetchBeacons();
+  const mapB = new Map(beacons.map(b=>[b.id,b]));
+  fetched.forEach(fb=>mapB.set(fb.id,fb));
+  beacons = [...mapB.values()];
+  document.getElementById("lastSync").textContent =
+    "Last sync: " + new Date().toLocaleTimeString();
+  render();
+}
+
+/* ---------- UI bindings ---------- */
+document.getElementById("search").oninput = e=>{
+  searchText = e.target.value.trim();
+  render();
+};
+document.getElementById("zoneFilter").onchange = e=>{
+  zoneFilter = e.target.value.trim();
+  render();
+};
+document.getElementById("refresh").onclick = refresh;
+
+/* Quick filters */
+document.querySelectorAll(".quick-filters").forEach(group=>{
+  group.addEventListener("click",e=>{
+    const btn = e.target.closest(".zf");
+    if(!btn) return;
+    zoneFilter = btn.dataset.zone || "";
+    document.getElementById("zoneFilter").value = zoneFilter;
+    render();
+  });
+});
+
+/* ---------- Add Beacon (ZoneID + TrolleyID → Firebase via uibuilder) ---------- */
+const modal = document.getElementById("modalBackdrop");
+const banner = document.getElementById("placementBanner");
+
+document.getElementById("addBtn").onclick = () => {
+  modal.style.display = "flex";
+};
+document.getElementById("m_cancel").onclick = () => {
+  modal.style.display = "none";
+};
+document.getElementById("m_continue").onclick = () => {
+  const zoneId = document.getElementById("m_zoneId").value.trim();
+  const trolleyId = document.getElementById("m_trolleyId").value.trim();
+  if(!zoneId || !trolleyId){
+    toast("Please select Zone ID and enter Trolley ID");
+    return;
+  }
+  modal.style.display = "none";
+  placementMode = true;
+  pendingBeacon = { zoneId, trolleyId };
+  banner.style.display = "block";
+};
+window.onkeydown = e => {
+  if(e.key === "Escape"){
+    placementMode = false;
+    pendingBeacon = null;
+    banner.style.display = "none";
+    modal.style.display = "none";
+  }
+};
+
+map.on("click",async e=>{
+  if(!placementMode || !pendingBeacon) return;
+  placementMode = false;
+  banner.style.display = "none";
+
+  const { zoneId, trolleyId } = pendingBeacon;
+  const name = `${zoneId} • ${trolleyId}`;
+  const nowIso = new Date().toISOString();
+
+  const b = {
+    id: trolleyId,
+    name,
+    zone: zoneId,
+    lat: e.latlng.lat,
+    lng: e.latlng.lng,
+    gatewayId: "—",
+    lastUpdate: nowIso
+  };
+
+  beacons.push(b);
+  render();
+  showDetails(b);
+
+  const fbPayload = {
+    zoneId,
+    trolleyId,
+    latitude: b.lat,
+    longitude: b.lng,
+    rssi: -24,
+    timestamp: nowIso
+  };
+
+  if(ui && typeof ui.send === "function"){
+    ui.send({ payload: fbPayload });
+    toast("Beacon sent to Firebase");
+  }else if(window.uibuilder && typeof window.uibuilder.send === "function"){
+    window.uibuilder.send({ payload: fbPayload });
+    toast("Beacon sent to Firebase");
+  }else{
+    console.warn("uibuilder not available; not sent to Node-RED");
+    toast("Added locally (uibuilder not connected)");
+  }
+
+  pendingBeacon = null;
+});
+
+/* ---------- Finder (Find My-style arrow) ---------- */
+const finderEl = document.getElementById("finder");
+const findTargetEl = document.getElementById("findTarget");
+const findDistanceEl = document.getElementById("findDistance");
+const findHintEl = document.getElementById("findHint");
+const arrowSpin = document.getElementById("arrowSpin");
+
+function setArrowRotation(deg){
+  arrowSpin.style.transform = `rotate(${deg}deg)`;
+}
+function varAccent2(){
+  return getComputedStyle(document.documentElement).getPropertyValue('--accent-2').trim() || '#22c55e';
+}
+
+function startFinder(beacon){
+  if(!beacon || beacon.lat==null || beacon.lng==null){
+    toast("Beacon has no coordinates");
+    return;
+  }
+  targetLatLng = [+beacon.lat, +beacon.lng];
+  findTargetEl.textContent = beacon.name || beacon.id || "Target";
+  finderEl.style.display = "flex";
+  map.panTo(targetLatLng);
+
+  if(!navigator.geolocation){
+    findHintEl.textContent = "Geolocation not supported.";
+    return;
+  }
+
+  userMarker = userMarker || L.circleMarker(
+    map.getCenter(),
+    {radius:7,color:varAccent2(),fillColor:varAccent2(),fillOpacity:.95}
+  ).addTo(map);
+
+  watchId = navigator.geolocation.watchPosition(pos=>{
+    const { latitude, longitude, heading } = pos.coords;
+    const aLat = latitude, aLng = longitude;
+    const bLat = targetLatLng[0], bLng = targetLatLng[1];
+
+    const dist = haversine(aLat,aLng,bLat,bLng);
+    const bearing = bearingBetween(aLat,aLng,bLat,bLng);
+    const deviceHeading = (headingDeg!=null) ? headingDeg :
+                          (Number.isFinite(heading) ? heading : null);
+    const relative = (deviceHeading!=null)
+      ? ((bearing - deviceHeading + 360) % 360)
+      : bearing;
+
+    setArrowRotation(relative);
+    findDistanceEl.textContent = dist>1000
+      ? (dist/1000).toFixed(2)+" km"
+      : Math.round(dist)+" m";
+
+    userMarker.setLatLng([aLat,aLng]);
+  }, err=>{
+    findHintEl.textContent = "Location error: " + err.message;
+  }, {enableHighAccuracy:true,maximumAge:1000,timeout:10000});
+
+  orientationHandler = e=>{
+    if(typeof e.webkitCompassHeading === "number"){
+      headingDeg = e.webkitCompassHeading;
+    }else if(e.absolute && e.alpha!=null){
+      headingDeg = 360 - e.alpha;
+    }
+  };
+
+  if(window.DeviceOrientationEvent){
+    if(typeof DeviceOrientationEvent.requestPermission === "function"){
+      DeviceOrientationEvent.requestPermission()
+        .then(state=>{
+          if(state === "granted"){
+            window.addEventListener("deviceorientation",orientationHandler,true);
+          }else{
+            findHintEl.textContent = "Compass permission denied; arrow uses map north.";
+          }
+        })
+        .catch(()=>{
+          findHintEl.textContent = "Compass not available; arrow uses map north.";
+        });
+    }else{
+      window.addEventListener("deviceorientation",orientationHandler,true);
+    }
+  }else{
+    findHintEl.textContent = "No compass API; arrow uses map north.";
+  }
+}
+
+function stopFinder(){
+  finderEl.style.display = "none";
+  if(watchId!=null){
+    navigator.geolocation.clearWatch(watchId);
+    watchId = null;
+  }
+  if(orientationHandler){
+    window.removeEventListener("deviceorientation",orientationHandler,true);
+    orientationHandler = null;
+  }
+  headingDeg = null;
+  targetLatLng = null;
+}
+
+document.getElementById("btnSearch").onclick = () => {
+  if(selectedBeacon) startFinder(selectedBeacon);
+};
+document.getElementById("findExit").onclick = () => stopFinder();
+document.getElementById("findRecenter").onclick = () => {
+  if(userMarker){ map.panTo(userMarker.getLatLng()); }
+};
+
+/* ---------- Listen for Node-RED / Firebase updates via uibuilder ---------- */
+if (ui && typeof ui.onChange === "function") {
+  ui.onChange('msg', (msg) => {
+    console.log('uibuilder msg received:', msg);
+
+    if (msg.topic === 'beacon/bulkUpdate' && Array.isArray(msg.payload)) {
+      msg.payload.forEach(p => {
+        const id = p.trolleyId || p.id;
+        if (!id) return;
+        const idx = beacons.findIndex(b => b.id === id);
+        const b = {
+          id,
+          name: (p.zoneId ? p.zoneId + ' • ' : '') + id,
+          zone: p.zoneId || '',
+          lat: p.latitude ?? p.lat,
+          lng: p.longitude ?? p.lng,
+          gatewayId: p.gatewayId || '—',
+          lastUpdate: p.timestamp || new Date().toISOString()
+        };
+        if (idx >= 0) beacons[idx] = { ...beacons[idx], ...b };
+        else beacons.push(b);
+      });
+      render();
+    }
+
+    if (msg.topic === 'beacon/update' && msg.payload) {
+      const p = msg.payload;
+      const id = p.trolleyId || p.id;
+      if (!id) return;
+      const idx = beacons.findIndex(b => b.id === id);
+      const b = {
+        id,
+        name: (p.zoneId ? p.zoneId + ' • ' : '') + id,
+        zone: p.zoneId || '',
+        lat: p.latitude ?? p.lat,
+        lng: p.longitude ?? p.lng,
+        gatewayId: p.gatewayId || '—',
+        lastUpdate: p.timestamp || new Date().toISOString()
+      };
+      if (idx >= 0) beacons[idx] = { ...beacons[idx], ...b };
+      else beacons.push(b);
+      render();
+    }
+  });
+}
+
+/* ---------- Boot ---------- */
+refresh();
+setInterval(refresh, AUTO_REFRESH_MS);
+</script>
+</body>
+</html>
+
+ 
