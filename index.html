@@ -373,20 +373,28 @@ document.getElementById("m_continue").onclick = () => {
 };
 window.onkeydown = e => { if(e.key === "Escape"){ placementMode = false; pendingBeacon = null; banner.style.display = "none"; modal.style.display = "none"; } };
 
-/* ---------- Firebase glue (SIMPLE, WORKING) ---------- */
+/* ---------- Firebase glue ---------- */
 let firebaseDb = null;
 (function initFirebase(){
   const firebaseConfig = {
-    apiKey: "AIzaSyCYE1hpoQV_QlfhQz7hlZResGuunbY1DG0",
+    // IMPORTANT: Fill with your actual values from Firebase console → Project settings → Your apps (Web)
+    apiKey: "REPLACE_WITH_YOUR_API_KEY",
     authDomain: "trolley-tracking-678c5.firebaseapp.com",
     databaseURL: "https://trolley-tracking-678c5-default-rtdb.asia-southeast1.firebasedatabase.app",
     projectId: "trolley-tracking-678c5",
     storageBucket: "trolley-tracking-678c5.appspot.com",
-    messagingSenderId: "830477552391",
-    appId: "1:830477552391:web:558930d01a8f594a3953a2",
-    measurementId: "G-RQ00F6KMXC"
+    messagingSenderId: "REPLACE_WITH_SENDER_ID",
+    appId: "REPLACE_WITH_APP_ID"
   };
+
+  const placeholders = Object.values(firebaseConfig).some(v => String(v).startsWith("REPLACE_"));
   try{
+    if (placeholders){
+      console.error("❌ Firebase config is incomplete. Fill in apiKey / appId / messagingSenderId.");
+      toast("Missing Firebase config — open console");
+      return; // don't proceed
+    }
+
     if (firebase.apps.length === 0) firebase.initializeApp(firebaseConfig);
     firebaseDb = firebase.database();
 
@@ -399,31 +407,18 @@ let firebaseDb = null;
         const v = data[id] || {};
         const lat = v.latitude ?? v.lat ?? null;
         const lng = v.longitude ?? v.lng ?? null;
-        arr.push({
-          id,
-          name: (v.zoneId ? `${v.zoneId} • ` : "") + id,
-          zone: v.zoneId || v.zone || "",
-          lat, lng,
-          gatewayId: v.gatewayId || "—",
-          lastUpdate: v.timestamp || v.lastUpdate || ""
-        });
+        arr.push({ id, name: (v.zoneId ? `${v.zoneId} • ` : "") + id, zone: v.zoneId || v.zone || "", lat, lng, gatewayId: v.gatewayId || "—", lastUpdate: v.timestamp || v.lastUpdate || "" });
       }
       beacons = arr;
       document.getElementById("lastSync").textContent = "Last sync: " + new Date().toLocaleTimeString();
       render();
-    },(err)=>{
-      console.error("Firebase read error:", err);
-      toast("Firebase read error: " + err.message);
-    });
-  }catch(e){
-    console.error("Firebase init error:", e);
-    toast("Firebase init error — see console");
-  }
+    },(err)=>{ console.error("Firebase read error:", err); toast("Firebase read error: " + err.message); });
+  }catch(e){ console.error("Firebase init error:", e); toast("Firebase init error — see console"); }
 })();
 
 // Helper: write one beacon record to /Tracking/<trolleyId>
 async function writeToFirebaseRec(payload){
-  if(!firebaseDb) return;
+  if(!firebaseDb) { console.warn("No Firebase DB (likely missing config)"); return; }
   const id = payload.trolleyId || payload.id; if(!id) return;
   const obj = {
     zoneId: payload.zoneId || "",
@@ -434,13 +429,78 @@ async function writeToFirebaseRec(payload){
     gatewayId: payload.gatewayId || "—",
     timestamp: payload.timestamp || new Date().toISOString()
   };
-  try{ await firebaseDb.ref(`/Tracking/${id}`).set(obj); }
-  catch(e){ console.error("Firebase write error:", e); toast("Firebase write error: " + e.message); }
+  try{ await firebaseDb.ref(`/Tracking/${id}`).set(obj); }catch(e){ console.error("Firebase write error:", e); toast("Firebase write error: " + e.message); }
 }
-  const id = payload.trolleyId || payload.id; if(!id) return;
-  const obj = { zoneId: payload.zoneId || '', trolleyId: id, latitude: payload.latitude ?? null, longitude: payload.longitude ?? null, rssi: payload.rssi ?? null, gatewayId: payload.gatewayId || '—', timestamp: payload.timestamp || new Date().toISOString() };
-  try{ await firebaseDb.ref(`/Tracking/${id}`).set(obj); }catch(e){ console.error('Firebase write error:', e); toast('Firebase write error: ' + e.message); }
-} } };
+
+/* ---------- Map click → place & save ---------- */
+map.on("click",async e=>{
+  if(!placementMode || !pendingBeacon) return;
+  placementMode = false; banner.style.display = "none";
+
+  const { zoneId, trolleyId } = pendingBeacon;
+  const name = `${zoneId} • ${trolleyId}`;
+  const nowIso = new Date().toISOString();
+
+  const b = { id: trolleyId, name, zone: zoneId, lat: e.latlng.lat, lng: e.latlng.lng, gatewayId: "—", lastUpdate: nowIso };
+
+  // Local immediate UI update
+  beacons.push(b); render(); showDetails(b);
+
+  // Payload for Firebase + uibuilder
+  const fbPayload = { zoneId, trolleyId, latitude: b.lat, longitude: b.lng, rssi: -24, timestamp: nowIso };
+
+  // Write to Firebase
+  writeToFirebaseRec(fbPayload);
+
+  // Keep original uibuilder send (no removal)
+  try{
+    if(ui && typeof ui.send === "function"){ ui.send({ payload: fbPayload }); toast("Beacon sent (uibuilder + Firebase)"); }
+    else if(window.uibuilder && typeof window.uibuilder.send === "function"){ window.uibuilder.send({ payload: fbPayload }); toast("Beacon sent (uibuilder + Firebase)"); }
+    else { toast("Saved to Firebase"); }
+  }catch(err){ console.warn("uibuilder send failed", err); }
+
+  pendingBeacon = null;
+});
+
+/* ---------- Finder ---------- */
+const finderEl = document.getElementById("finder");
+const findTargetEl = document.getElementById("findTarget");
+const findDistanceEl = document.getElementById("findDistance");
+const findHintEl = document.getElementById("findHint");
+const arrowSpin = document.getElementById("arrowSpin");
+function setArrowRotation(deg){ arrowSpin.style.transform = `rotate(${deg}deg)`; }
+function varAccent2(){ return getComputedStyle(document.documentElement).getPropertyValue('--accent-2').trim() || '#22c55e'; }
+function startFinder(beacon){
+  if(!beacon || beacon.lat==null || beacon.lng==null){ toast("Beacon has no coordinates"); return; }
+  targetLatLng = [+beacon.lat, +beacon.lng];
+  findTargetEl.textContent = beacon.name || beacon.id || "Target";
+  finderEl.style.display = "flex"; map.panTo(targetLatLng);
+
+  if(!navigator.geolocation){ findHintEl.textContent = "Geolocation not supported."; return; }
+
+  userMarker = userMarker || L.circleMarker(map.getCenter(), {radius:7,color:varAccent2(),fillColor:varAccent2(),fillOpacity:.95}).addTo(map);
+
+  watchId = navigator.geolocation.watchPosition(pos=>{
+    const { latitude, longitude, heading } = pos.coords;
+    const aLat = latitude, aLng = longitude; const [bLat,bLng] = targetLatLng;
+    const dist = haversine(aLat,aLng,bLat,bLng); const bearing = bearingBetween(aLat,aLng,bLat,bLng);
+    const deviceHeading = (headingDeg!=null) ? headingDeg : (Number.isFinite(heading) ? heading : null);
+    const relative = (deviceHeading!=null) ? ((bearing - deviceHeading + 360) % 360) : bearing;
+    setArrowRotation(relative); findDistanceEl.textContent = dist>1000 ? (dist/1000).toFixed(2)+" km" : Math.round(dist)+" m";
+    userMarker.setLatLng([aLat,aLng]);
+  }, err=>{ findHintEl.textContent = "Location error: " + err.message; }, {enableHighAccuracy:true,maximumAge:1000,timeout:10000});
+
+  orientationHandler = e=>{ if(typeof e.webkitCompassHeading === "number") headingDeg = e.webkitCompassHeading; else if(e.absolute && e.alpha!=null) headingDeg = 360 - e.alpha; };
+  if(window.DeviceOrientationEvent){
+    if(typeof DeviceOrientationEvent.requestPermission === "function"){ DeviceOrientationEvent.requestPermission().then(state=>{ if(state === "granted"){ window.addEventListener("deviceorientation",orientationHandler,true); } else { findHintEl.textContent = "Compass permission denied; arrow uses map north."; } }).catch(()=>{ findHintEl.textContent = "Compass not available; arrow uses map north."; }); }
+    else { window.addEventListener("deviceorientation",orientationHandler,true); }
+  }else{ findHintEl.textContent = "No compass API; arrow uses map north."; }
+}
+function stopFinder(){ finderEl.style.display = "none"; if(watchId!=null){ navigator.geolocation.clearWatch(watchId); watchId = null; } if(orientationHandler){ window.removeEventListener("deviceorientation",orientationHandler,true); orientationHandler = null; } headingDeg = null; targetLatLng = null; }
+
+document.getElementById("btnSearch").onclick = () => { if(selectedBeacon) startFinder(selectedBeacon); };
+document.getElementById("findExit").onclick = () => stopFinder();
+document.getElementById("findRecenter").onclick = () => { if(userMarker){ map.panTo(userMarker.getLatLng()); } };
 
 /* ---------- uibuilder listener ---------- */
 if (ui && typeof ui.onChange === "function") {
