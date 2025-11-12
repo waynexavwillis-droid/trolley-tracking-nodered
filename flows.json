@@ -249,5 +249,30 @@
             ],
             []
         ]
+    },
+    {
+        "id": "850a593c659b423d",
+        "type": "inject",
+        "z": "1fe0900c2c4e1691",
+        "name": "",
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "repeat": "10",
+        "crontab": "",
+        "once": true,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 370,
+        "y": 80,
+        "wires": [
+            [
+                "16fcd16907037633"
+            ]
+        ]
     }
 ]
