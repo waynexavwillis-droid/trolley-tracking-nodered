@@ -286,11 +286,30 @@ function showDetails(b){
   d.querySelector("#d_coords").textContent = (b.lat!=null && b.lng!=null) ? `${(+b.lat).toFixed(5)}, ${(+b.lng).toFixed(5)}` : "—";
 }
 
-/* ---------- Delete flow (local only) ---------- */
+/* ---------- Delete flow (sync with Firebase) ---------- */
 const confirmBox = document.getElementById("confirm");
 document.getElementById("c_cancel").onclick = () => confirmBox.style.display = "none";
 document.getElementById("btnDelete").onclick = () => { if(!selectedId) return; confirmBox.style.display = "flex"; };
-document.getElementById("c_ok").onclick = async () => { const id = selectedId; confirmBox.style.display = "none"; if(!id) return; beacons = beacons.filter(b=>b.id!==id); render(); document.getElementById("details").style.display = "none"; document.getElementById("detailsEmpty").style.display = "block"; toast("Beacon removed locally"); };
+document.getElementById("c_ok").onclick = async () => {
+  const id = selectedId; confirmBox.style.display = "none"; if(!id) return;
+
+  // Try to delete in Firebase first
+  try{
+    if(!firebaseDb){ throw new Error("Firebase not initialised"); }
+    await firebaseDb.ref(`/Tracking/${id}`).remove();
+    toast("Beacon deleted from Firebase");
+  }catch(e){
+    console.error("Firebase delete error:", e);
+    toast("Delete failed: " + (e?.message || e));
+    return; // don't mutate local list if remote failed
+  }
+
+  // Local UI clean-up (the live listener will also refresh state)
+  beacons = beacons.filter(b=>b.id!==id);
+  render();
+  document.getElementById("details").style.display = "none";
+  document.getElementById("detailsEmpty").style.display = "block";
+};
 
 /* ---------- Stats ---------- */
 function renderStats(){
