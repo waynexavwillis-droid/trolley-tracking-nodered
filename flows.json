@@ -185,7 +185,7 @@
         "constraints": {},
         "database": "firebase_cfg",
         "inputs": 1,
-        "listenerType": "none",
+        "listenerType": "value",
         "outputType": "auto",
         "passThrough": false,
         "path": "Tracking",
