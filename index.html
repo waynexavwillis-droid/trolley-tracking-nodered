@@ -373,92 +373,70 @@ document.getElementById("m_continue").onclick = () => {
 };
 window.onkeydown = e => { if(e.key === "Escape"){ placementMode = false; pendingBeacon = null; banner.style.display = "none"; modal.style.display = "none"; } };
 
-/* ---------- Firebase glue ---------- */
-// 💡 Robust config loader so GitHub caching or different devices won't "lose" your config
-// 1) Preferred: paste your config JSON into the <script id="fb-config"> tag below
-// 2) Or set window.FB_CONFIG = { ... } before this block
-// 3) Or append ?fb=<base64 of the JSON config> to the page URL for quick testing
-
-// 🔧 Paste your Firebase Web App config JSON inside this tag (safe to expose):
-//   Firebase Console → Project settings → General → Your apps → Web app → Config
-//   Example shape: {"apiKey":"...","authDomain":"...","databaseURL":"...","projectId":"...","storageBucket":"...","messagingSenderId":"...","appId":"..."}
-const FB_CONFIG_SCRIPT_ID = 'fb-config';
-(function ensureConfigTag(){
-  if (!document.getElementById(FB_CONFIG_SCRIPT_ID)){
-    const s = document.createElement('script');
-    s.type = 'application/json';
-    s.id = FB_CONFIG_SCRIPT_ID;
-    s.textContent = '{
-  "apiKey": "AIzaSyCYE1hpoQV_QlfhQz7hlZResGuunbY1DG0",
-  "authDomain": "trolley-tracking-678c5.firebaseapp.com",
-  "databaseURL": "https://trolley-tracking-678c5-default-rtdb.asia-southeast1.firebasedatabase.app",
-  "projectId": "trolley-tracking-678c5",
-  "storageBucket": "trolley-tracking-678c5.appspot.com",
-  "messagingSenderId": "830477552391",
-  "appId": "1:830477552391:web:558930d01a8f594a3953a2",
-  "measurementId": "G-RQ00F6KMXC"
-}';
-    document.head.appendChild(s);
-  }
-})();
-
-function decodeBase64Json(b64){ try{ return JSON.parse(atob(b64)); }catch{return null;} }
-function readConfigFromTag(){
-  const el = document.getElementById(FB_CONFIG_SCRIPT_ID);
-  if (!el) return null;
-  const txt = (el.textContent||'').trim();
-  if (!txt) return null;
-  try{ return JSON.parse(txt); }catch{ return null; }
-}
-function getFirebaseConfig(){
-  // a) <script type="application/json" id="fb-config">{...}
-  let cfg = readConfigFromTag();
-  // b) window.FB_CONFIG = {...}
-  if (!cfg && typeof window.FB_CONFIG === 'object') cfg = window.FB_CONFIG;
-  // c) ?fb=<base64json>
-  if (!cfg){
-    const p = new URLSearchParams(location.search).get('fb');
-    if (p) cfg = decodeBase64Json(p);
-  }
-  return cfg;
-}
-
+/* ---------- Firebase glue (SIMPLE, WORKING) ---------- */
 let firebaseDb = null;
 (function initFirebase(){
-  const firebaseConfig = getFirebaseConfig();
-
-  const missing = !firebaseConfig || !firebaseConfig.apiKey || !firebaseConfig.appId || !firebaseConfig.messagingSenderId || !firebaseConfig.databaseURL;
-  if (missing){
-    console.error('❌ Firebase config missing or incomplete. Provide apiKey/appId/messagingSenderId/databaseURL via #fb-config, window.FB_CONFIG, or ?fb=.');
-    toast('Missing Firebase config — open console');
-    return; // stop early so we don't throw
-  }
-
+  const firebaseConfig = {
+    apiKey: "AIzaSyCYE1hpoQV_QlfhQz7hlZResGuunbY1DG0",
+    authDomain: "trolley-tracking-678c5.firebaseapp.com",
+    databaseURL: "https://trolley-tracking-678c5-default-rtdb.asia-southeast1.firebasedatabase.app",
+    projectId: "trolley-tracking-678c5",
+    storageBucket: "trolley-tracking-678c5.appspot.com",
+    messagingSenderId: "830477552391",
+    appId: "1:830477552391:web:558930d01a8f594a3953a2",
+    measurementId: "G-RQ00F6KMXC"
+  };
   try{
     if (firebase.apps.length === 0) firebase.initializeApp(firebaseConfig);
     firebaseDb = firebase.database();
 
     // Live read from /Tracking
-    const ref = firebaseDb.ref('/Tracking');
-    ref.on('value',(snap)=>{
+    const ref = firebaseDb.ref("/Tracking");
+    ref.on("value",(snap)=>{
       const data = snap.val() || {};
       const arr = [];
       for(const id in data){
         const v = data[id] || {};
         const lat = v.latitude ?? v.lat ?? null;
         const lng = v.longitude ?? v.lng ?? null;
-        arr.push({ id, name: (v.zoneId ? `${v.zoneId} • ` : '') + id, zone: v.zoneId || v.zone || '', lat, lng, gatewayId: v.gatewayId || '—', lastUpdate: v.timestamp || v.lastUpdate || '' });
+        arr.push({
+          id,
+          name: (v.zoneId ? `${v.zoneId} • ` : "") + id,
+          zone: v.zoneId || v.zone || "",
+          lat, lng,
+          gatewayId: v.gatewayId || "—",
+          lastUpdate: v.timestamp || v.lastUpdate || ""
+        });
       }
       beacons = arr;
-      document.getElementById('lastSync').textContent = 'Last sync: ' + new Date().toLocaleTimeString();
+      document.getElementById("lastSync").textContent = "Last sync: " + new Date().toLocaleTimeString();
       render();
-    },(err)=>{ console.error('Firebase read error:', err); toast('Firebase read error: ' + err.message); });
-  }catch(e){ console.error('Firebase init error:', e); toast('Firebase init error — see console'); }
+    },(err)=>{
+      console.error("Firebase read error:", err);
+      toast("Firebase read error: " + err.message);
+    });
+  }catch(e){
+    console.error("Firebase init error:", e);
+    toast("Firebase init error — see console");
+  }
 })();
 
 // Helper: write one beacon record to /Tracking/<trolleyId>
 async function writeToFirebaseRec(payload){
-  if(!firebaseDb) { console.warn('No Firebase DB (likely missing config)'); return; }
+  if(!firebaseDb) return;
+  const id = payload.trolleyId || payload.id; if(!id) return;
+  const obj = {
+    zoneId: payload.zoneId || "",
+    trolleyId: id,
+    latitude: payload.latitude ?? null,
+    longitude: payload.longitude ?? null,
+    rssi: payload.rssi ?? null,
+    gatewayId: payload.gatewayId || "—",
+    timestamp: payload.timestamp || new Date().toISOString()
+  };
+  try{ await firebaseDb.ref(`/Tracking/${id}`).set(obj); }
+  catch(e){ console.error("Firebase write error:", e); toast("Firebase write error: " + e.message); }
+}
   const id = payload.trolleyId || payload.id; if(!id) return;
   const obj = { zoneId: payload.zoneId || '', trolleyId: id, latitude: payload.latitude ?? null, longitude: payload.longitude ?? null, rssi: payload.rssi ?? null, gatewayId: payload.gatewayId || '—', timestamp: payload.timestamp || new Date().toISOString() };
   try{ await firebaseDb.ref(`/Tracking/${id}`).set(obj); }catch(e){ console.error('Firebase write error:', e); toast('Firebase write error: ' + e.message); }
