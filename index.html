@@ -12,8 +12,12 @@
 <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css">
 <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
 
-<!-- uibuilder client for Node-RED -->
+<!-- uibuilder client for Node-RED (kept) -->
 <script src="/uibuilder/uibuilder.iife.min.js"></script>
+
+<!-- ✅ Firebase compat SDKs -->
+<script src="https://www.gstatic.com/firebasejs/11.0.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/11.0.1/firebase-database-compat.js"></script>
 
 <style>
 :root{
@@ -161,7 +165,7 @@ hr{border:none;border-top:1px solid var(--border);margin:10px 0;}
   </aside>
 </main>
 
-<!-- Add Beacon Modal: Zone ID (select) + Trolley ID -->
+<!-- Add Beacon Modal -->
 <div id="modalBackdrop" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);
 z-index:1000;display:flex;align-items:center;justify-content:center;">
   <div class="dialog">
@@ -235,12 +239,12 @@ z-index:1000;display:flex;align-items:center;justify-content:center;">
 <div id="toast" class="toast">Saved</div>
 
 <script>
-/* ---------- Config ---------- */
+/* ---------- Config (kept) ---------- */
 const API_URL = "/api/beacons";          // optional fallback
 const ENABLE_POST = false;               // using Firebase via uibuilder
 const AUTO_REFRESH_MS = 10000;
 
-/* ---------- uibuilder ---------- */
+/* ---------- uibuilder (kept) ---------- */
 let ui = null;
 if (window.uibuilder) {
   ui = window.uibuilder;
@@ -276,7 +280,7 @@ let orientationHandler = null;
 /* ---------- Helpers ---------- */
 function escapeH(s){
   return String(s ?? "").replace(/[&<>"']/g, m => ({
-    "&":"&amp;","<":"&lt;","<": "&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"
+    "&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"
   }[m]));
 }
 function popupHtml(b){
@@ -299,7 +303,7 @@ const toDeg = r => r * 180 / Math.PI;
 function haversine(aLat,aLng,bLat,bLng){
   const R = 6371000;
   const dLat = toRad(bLat-aLat), dLng = toRad(bLng-aLng);
-  const s = Math.sin(dLat/2)**2 + Math.cos(toRad(aLat))*Math.cos(toRad(bLat))*Math.sin(dLng/2)**2;
+  const s = Math.sin(dLat/2)**2 + Math.cos(toRad(aLat))*Math.cos(toRad(bLat))*math.sin(dLng/2)**2;
   return 2 * R * Math.asin(Math.sqrt(s));
 }
 function bearingBetween(aLat,aLng,bLat,bLng){
@@ -421,7 +425,7 @@ function render(){
   renderStats();
 }
 
-/* ---------- Initial / fallback data ---------- */
+/* ---------- Initial / fallback data (kept) ---------- */
 async function fetchBeacons(){
   try{
     const r = await fetch(API_URL);
@@ -442,7 +446,7 @@ async function refresh(){
   render();
 }
 
-/* ---------- UI bindings ---------- */
+/* ---------- UI bindings (kept) ---------- */
 document.getElementById("search").oninput = e=>{
   searchText = e.target.value.trim();
   render();
@@ -453,7 +457,7 @@ document.getElementById("zoneFilter").onchange = e=>{
 };
 document.getElementById("refresh").onclick = refresh;
 
-/* Quick filters */
+/* Quick filters (kept) */
 document.querySelectorAll(".quick-filters").forEach(group=>{
   group.addEventListener("click",e=>{
     const btn = e.target.closest(".zf");
@@ -464,7 +468,7 @@ document.querySelectorAll(".quick-filters").forEach(group=>{
   });
 });
 
-/* ---------- Add Beacon (ZoneID + TrolleyID → Firebase via uibuilder) ---------- */
+/* ---------- Add Beacon (ZoneID + TrolleyID) ---------- */
 const modal = document.getElementById("modalBackdrop");
 const banner = document.getElementById("placementBanner");
 
@@ -495,6 +499,77 @@ window.onkeydown = e => {
   }
 };
 
+/* ---------- Firebase glue (NEW, non-destructive) ---------- */
+let firebaseDb = null;
+(function initFirebase(){
+  const firebaseConfig = {
+    apiKey: "REPLACE_WITH_YOUR_API_KEY",
+    authDomain: "trolley-tracking-678c5.firebaseapp.com",
+    databaseURL: "https://trolley-tracking-678c5-default-rtdb.asia-southeast1.firebasedatabase.app",
+    projectId: "trolley-tracking-678c5",
+    storageBucket: "trolley-tracking-678c5.appspot.com",
+    messagingSenderId: "REPLACE_WITH_SENDER_ID",
+    appId: "REPLACE_WITH_APP_ID"
+  };
+  try{
+    if (firebase.apps.length === 0) firebase.initializeApp(firebaseConfig);
+    firebaseDb = firebase.database();
+
+    // Live read from /Tracking
+    const ref = firebaseDb.ref("/Tracking");
+    ref.on("value",(snap)=>{
+      const data = snap.val() || {};
+      const arr = [];
+      for(const id in data){
+        const v = data[id] || {};
+        const lat = v.latitude ?? v.lat ?? null;
+        const lng = v.longitude ?? v.lng ?? null;
+        arr.push({
+          id,
+          name: (v.zoneId ? `${v.zoneId} • ` : "") + id,
+          zone: v.zoneId || v.zone || "",
+          lat, lng,
+          gatewayId: v.gatewayId || "—",
+          lastUpdate: v.timestamp || v.lastUpdate || ""
+        });
+      }
+      beacons = arr;
+      document.getElementById("lastSync").textContent =
+        "Last sync: " + new Date().toLocaleTimeString();
+      render();
+    },(err)=>{
+      console.error("Firebase read error:", err);
+      toast("Firebase read error: " + err.message);
+    });
+  }catch(e){
+    console.error("Firebase init error:", e);
+  }
+})();
+
+// Helper: write one beacon record to /Tracking/<trolleyId>
+async function writeToFirebaseRec(payload){
+  if(!firebaseDb) return;
+  const id = payload.trolleyId || payload.id;
+  if(!id) return;
+  const obj = {
+    zoneId: payload.zoneId || "",
+    trolleyId: id,
+    latitude: payload.latitude ?? null,
+    longitude: payload.longitude ?? null,
+    rssi: payload.rssi ?? null,
+    gatewayId: payload.gatewayId || "—",
+    timestamp: payload.timestamp || new Date().toISOString()
+  };
+  try{
+    await firebaseDb.ref(`/Tracking/${id}`).set(obj);
+    // toast("Saved to Firebase");  // optional
+  }catch(e){
+    console.error("Firebase write error:", e);
+    toast("Firebase write error: " + e.message);
+  }
+}
+
+/* ---------- Map click → place & save ---------- */
 map.on("click",async e=>{
   if(!placementMode || !pendingBeacon) return;
   placementMode = false;
@@ -514,10 +589,12 @@ map.on("click",async e=>{
     lastUpdate: nowIso
   };
 
+  // Local immediate UI update
   beacons.push(b);
   render();
   showDetails(b);
 
+  // Payload for Firebase + (kept) uibuilder
   const fbPayload = {
     zoneId,
     trolleyId,
@@ -527,21 +604,25 @@ map.on("click",async e=>{
     timestamp: nowIso
   };
 
+  // Write to Firebase (works on GitHub Pages)
+  writeToFirebaseRec(fbPayload);
+
+  // Keep your original uibuilder send (no removal)
   if(ui && typeof ui.send === "function"){
     ui.send({ payload: fbPayload });
-    toast("Beacon sent to Firebase");
+    toast("Beacon sent (uibuilder + Firebase)");
   }else if(window.uibuilder && typeof window.uibuilder.send === "function"){
     window.uibuilder.send({ payload: fbPayload });
-    toast("Beacon sent to Firebase");
+    toast("Beacon sent (uibuilder + Firebase)");
   }else{
-    console.warn("uibuilder not available; not sent to Node-RED");
-    toast("Added locally (uibuilder not connected)");
+    console.warn("uibuilder not available; sent to Firebase only");
+    toast("Saved to Firebase");
   }
 
   pendingBeacon = null;
 });
 
-/* ---------- Finder (Find My-style arrow) ---------- */
+/* ---------- Finder (kept) ---------- */
 const finderEl = document.getElementById("finder");
 const findTargetEl = document.getElementById("findTarget");
 const findDistanceEl = document.getElementById("findDistance");
@@ -649,7 +730,7 @@ document.getElementById("findRecenter").onclick = () => {
   if(userMarker){ map.panTo(userMarker.getLatLng()); }
 };
 
-/* ---------- Listen for Node-RED / Firebase updates via uibuilder ---------- */
+/* ---------- uibuilder listener (kept) ---------- */
 if (ui && typeof ui.onChange === "function") {
   ui.onChange('msg', (msg) => {
     console.log('uibuilder msg received:', msg);
@@ -695,11 +776,9 @@ if (ui && typeof ui.onChange === "function") {
   });
 }
 
-/* ---------- Boot ---------- */
+/* ---------- Boot (kept) ---------- */
 refresh();
 setInterval(refresh, AUTO_REFRESH_MS);
 </script>
 </body>
 </html>
-
- 
