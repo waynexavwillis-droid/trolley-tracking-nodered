@@ -28,7 +28,7 @@ header h1{font-size:16px;margin:0;font-weight:700;letter-spacing:.2px}
 input,select,button{background:#0c1322;border:1px solid var(--chip-br);color:var(--text);padding:8px 10px;border-radius:10px;font-size:14px;outline:none}
 input::placeholder{color:#72819a}
 select option{background:#0b1220;color:var(--text)}
-button.accent{background:var(--accent);color:#0b0f15;border:none}
+button.accent{background:var(--accent);color:0b0f15;border:none}
 button.ghost{background:#0c1322;color:#fff;border:1px solid var(--chip-br)}
 button.danger{background:var(--danger);color:#fff;border:none}
 button:disabled{opacity:.6;cursor:not-allowed}
@@ -152,7 +152,7 @@ hr{border:none;border-top:1px solid var(--border);margin:10px 0}
     <label class="small muted">Zone ID</label>
     <select id="m_zoneId" style="width:100%;margin-bottom:10px;">
       <option value="">Select a Zone</option>
-      <option value="T1-ZONE-A">T1-ZONE-A</option>
+      <!-- Removed T1-ZONE-A option as requested -->
       <option value="Zone A">Zone A</option>
       <option value="Zone B">Zone B</option>
       <option value="Zone C">Zone C</option>
@@ -262,7 +262,6 @@ const toDeg = r => r * 180 / Math.PI;
 function haversine(aLat,aLng,bLat,bLng){
   const R = 6371000;
   const dLat = toRad(bLat-aLat), dLng = toRad(bLng-aLng);
-  /* ✅ FIX: Math.sin (was `math.sin` previously) */
   const s = Math.sin(dLat/2)**2 + Math.cos(toRad(aLat))*Math.cos(toRad(bLat))*Math.sin(dLng/2)**2;
   return 2 * R * Math.asin(Math.sqrt(s));
 }
@@ -545,5 +544,3 @@ setInterval(refresh, AUTO_REFRESH_MS);
 </script>
 </body>
 </html>
-
-
