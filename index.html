@@ -20,7 +20,7 @@
 <script src="https://www.gstatic.com/firebasejs/11.0.1/firebase-database-compat.js"></script>
 
 <style>
-/* ---------- Light, app-like theme (only CSS changed) ---------- */
+/* ---------- Light, app-like theme ---------- */
 :root{
   --bg:#e8f0fb;
   --panel:#f9fafb;
@@ -269,6 +269,58 @@ hr{border:none;border-top:1px solid var(--border);margin:10px 0}
 }
 .finder-cta{display:flex;gap:10px;margin-top:8px;justify-content:center}
 
+/* level picker modal */
+#levelModal{
+  position:fixed;
+  inset:0;
+  background:rgba(15,23,42,.45);
+  display:none;
+  align-items:center;
+  justify-content:center;
+  z-index:1100;
+}
+.level-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(120px,1fr));
+  gap:10px;
+  margin-top:10px;
+}
+.level-card{
+  border-radius:18px;
+  border:1px solid var(--border);
+  background:linear-gradient(145deg,#f9fafb,#eef2ff);
+  padding:10px;
+  cursor:pointer;
+  text-align:left;
+  transition:.16s ease;
+  box-shadow:0 10px 24px rgba(148,163,184,.4);
+}
+.level-card:hover{
+  transform:translateY(-2px);
+  box-shadow:0 18px 32px rgba(148,163,184,.55);
+  border-color:var(--accent);
+}
+.level-tag{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  width:32px;
+  height:32px;
+  border-radius:14px;
+  background:#0ea5e9;
+  color:#f9fafb;
+  font-weight:700;
+  margin-bottom:6px;
+}
+.level-title{
+  font-weight:700;
+  font-size:14px;
+}
+.level-sub{
+  font-size:12px;
+  color:var(--muted);
+}
+
 @media(max-width:980px){
   main{
     grid-template-columns:1fr;
@@ -283,7 +335,7 @@ hr{border:none;border-top:1px solid var(--border);margin:10px 0}
   <h1>Terminal Map</h1>
   <input id="search" placeholder="Search beacon…" />
 
-  <!-- NEW: simple dropdown to toggle mode -->
+  <!-- View mode selector -->
   <select id="viewMode">
     <option value="beacon">Beacons</option>
     <option value="gateway">Gateways</option>
@@ -293,6 +345,10 @@ hr{border:none;border-top:1px solid var(--border);margin:10px 0}
     <option value="">All zones</option>
     <option>Zone A</option><option>Zone B</option><option>Zone C</option>
   </select>
+
+  <!-- NEW: Level picker button -->
+  <button id="levelBtn" class="ghost">Levels</button>
+
   <button id="refresh" class="accent">Refresh</button>
   <button id="addBtn" class="accent">Add Beacon 😊</button>
   <span class="muted small" id="lastSync">Last sync: —</span>
@@ -365,7 +421,7 @@ hr{border:none;border-top:1px solid var(--border);margin:10px 0}
 </main>
 
 <!-- Add Beacon Modal -->
-<div id="modalBackdrop" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:1000;display:flex;align-items:center;justify-content:center;">
+<div id="modalBackdrop" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:1000;align-items:center;justify-content:center;">
   <div class="dialog">
     <h3 style="margin:0 0 6px 0">Add Beacon 😊</h3>
     <p class="muted" style="margin:0 0 10px 0">Select Zone ID and enter Trolley ID. After Continue, click on the map to place the beacon.</p>
@@ -373,7 +429,7 @@ hr{border:none;border-top:1px solid var(--border);margin:10px 0}
     <label class="small muted">Zone ID</label>
     <select id="m_zoneId" style="width:100%;margin-bottom:10px;">
       <option value="">Select a Zone</option>
-      <!-- Removed T1-ZONE-A option as requested -->
+      <!-- T1-ZONE-A removed as requested earlier -->
       <option value="Zone A">Zone A</option>
       <option value="Zone B">Zone B</option>
       <option value="Zone C">Zone C</option>
@@ -385,6 +441,38 @@ hr{border:none;border-top:1px solid var(--border);margin:10px 0}
     <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:14px;">
       <button id="m_cancel" class="ghost">Cancel</button>
       <button id="m_continue" class="accent">Continue</button>
+    </div>
+  </div>
+</div>
+
+<!-- NEW: Level picker modal -->
+<div id="levelModal">
+  <div class="dialog">
+    <h3 style="margin:0 0 6px 0">Select Level</h3>
+    <p class="muted small" style="margin:0 0 8px 0">
+      For now, each level simulates a different area in Singapore. Later you can map these to real building floors.
+    </p>
+
+    <div class="level-grid">
+      <button class="level-card" data-level="L1">
+        <div class="level-tag">L1</div>
+        <div class="level-title">Ground / Arrival Level</div>
+        <div class="level-sub">Bedok Reservoir / Tampines area</div>
+      </button>
+      <button class="level-card" data-level="L2">
+        <div class="level-tag">L2</div>
+        <div class="level-title">Departure Level</div>
+        <div class="level-sub">Changi Airport vicinity</div>
+      </button>
+      <button class="level-card" data-level="L3">
+        <div class="level-tag">L3</div>
+        <div class="level-title">Sky / Rooftop Level</div>
+        <div class="level-sub">Marina Bay / CBD</div>
+      </button>
+    </div>
+
+    <div style="display:flex;justify-content:flex-end;margin-top:12px;">
+      <button id="levelClose" class="ghost">Close</button>
     </div>
   </div>
 </div>
@@ -449,12 +537,24 @@ L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19,
 const clusters = L.markerClusterGroup({ disableClusteringAtZoom: 19 });
 map.addLayer(clusters);
 
+/* ---------- Simulated level views (change later to real floors) ---------- */
+const LEVEL_VIEWS = {
+  L1: { center:[1.3455, 103.9323], zoom:17 },          // your current Bedok/Tampines area
+  L2: { center:[1.3644, 103.9915], zoom:16 },          // around Changi Airport
+  L3: { center:[1.2830, 103.8600], zoom:16 }           // Marina Bay / CBD
+};
+function flyToLevel(level){
+  const v = LEVEL_VIEWS[level];
+  if(!v) return;
+  map.flyTo(v.center, v.zoom, { duration:1.2 });
+}
+
 /* ---------- State ---------- */
 let beacons = [];
 const idToMarker = new Map();
 let searchText = "";
 let zoneFilter = "";
-let viewMode = "beacon";   // NEW: beacon / gateway
+let viewMode = "beacon";   // beacon / gateway
 let placementMode = false;
 let pendingBeacon = null;
 let selectedId = null;
@@ -476,11 +576,8 @@ function fits(b){
   const zoneOK = !zoneFilter || String(b.zone||"").toLowerCase() === zoneFilter.toLowerCase();
   const text = ((b.name||"")+" "+(b.id||"")).toLowerCase();
   const searchOK = !searchText || text.includes(searchText.toLowerCase());
-
-  // NEW: filter by type based on dropdown (default everything is "beacon")
   const type = b.type || "beacon";
   const modeOK = !viewMode || type === viewMode;
-
   return zoneOK && searchOK && modeOK;
 }
 function toast(t){ const el = document.getElementById("toast"); el.textContent = t; el.classList.add("show"); setTimeout(()=>el.classList.remove("show"),1500); }
@@ -492,6 +589,11 @@ function haversine(aLat,aLng,bLat,bLng){
   const s = Math.sin(dLat/2)**2 + Math.cos(toRad(aLat))*Math.cos(toRad(bLat))*Math.sin(dLng/2)**2;
   return 2 * R * Math.asin(Math.sqrt(s));
 }
+function bearingBetween(aLat,aLng,bLat,bLng){
+  const y = Math.sin(toRad(bLng-aLng))*Math.cos(toRad(bLat));
+  const x = Math.cos(toRad(aLat))*Math.sin(toRad(bLat)) - Math.sin(toRad(aLat))*Math.cos(toRad(blat))*Math.cos(toRad(bLng-aLng));
+}
+/* small typo fix: replace bLat variable name */
 function bearingBetween(aLat,aLng,bLat,bLng){
   const y = Math.sin(toRad(bLng-aLng))*Math.cos(toRad(bLat));
   const x = Math.cos(toRad(aLat))*Math.sin(toRad(bLat)) - Math.sin(toRad(aLat))*Math.cos(toRad(bLat))*Math.cos(toRad(bLng-aLng));
@@ -519,7 +621,6 @@ document.getElementById("btnDelete").onclick = () => { if(!selectedId) return; c
 document.getElementById("c_ok").onclick = async () => {
   const id = selectedId; confirmBox.style.display = "none"; if(!id) return;
 
-  // Delete in Firebase first
   try{
     if(!firebaseDb){ throw new Error("Firebase not initialised"); }
     await firebaseDb.ref(`/Tracking/${id}`).remove();
@@ -527,10 +628,9 @@ document.getElementById("c_ok").onclick = async () => {
   }catch(e){
     console.error("Firebase delete error:", e);
     toast("Delete failed: " + (e?.message || e));
-    return; // don't mutate local list if remote failed
+    return;
   }
 
-  // Local UI clean-up (live listener will also refresh state)
   beacons = beacons.filter(b=>b.id!==id);
   render();
   document.getElementById("details").style.display = "none";
@@ -603,11 +703,11 @@ async function refresh(){
   render();
 }
 
+/* ---------- UI bindings ---------- */
 document.getElementById("search").oninput = e=>{ searchText = e.target.value.trim(); render(); };
 document.getElementById("zoneFilter").onchange = e=>{ zoneFilter = e.target.value.trim(); render(); };
 document.getElementById("refresh").onclick = refresh;
 
-// NEW: viewMode dropdown hook
 document.getElementById("viewMode").onchange = e=>{
   viewMode = e.target.value;
   render();
@@ -617,10 +717,9 @@ document.querySelectorAll(".quick-filters").forEach(group=>{
   group.addEventListener("click",e=>{ const btn = e.target.closest(".zf"); if(!btn) return; zoneFilter = btn.dataset.zone || ""; document.getElementById("zoneFilter").value = zoneFilter; render(); });
 });
 
-/* ---------- Add Beacon (ZoneID + TrolleyID) ---------- */
+/* Add Beacon modal */
 const modal = document.getElementById("modalBackdrop");
 const banner = document.getElementById("placementBanner");
-
 document.getElementById("addBtn").onclick = () => { modal.style.display = "flex"; };
 document.getElementById("m_cancel").onclick = () => { modal.style.display = "none"; };
 document.getElementById("m_continue").onclick = () => {
@@ -629,7 +728,27 @@ document.getElementById("m_continue").onclick = () => {
   if(!zoneId || !trolleyId){ toast("Please select Zone ID and enter Trolley ID"); return; }
   modal.style.display = "none"; placementMode = true; pendingBeacon = { zoneId, trolleyId }; banner.style.display = "block";
 };
-window.onkeydown = e => { if(e.key === "Escape"){ placementMode = false; pendingBeacon = null; banner.style.display = "none"; modal.style.display = "none"; } };
+window.onkeydown = e => {
+  if(e.key === "Escape"){
+    placementMode = false;
+    pendingBeacon = null;
+    banner.style.display = "none";
+    modal.style.display = "none";
+    document.getElementById("levelModal").style.display = "none";
+  }
+};
+
+/* NEW: Level modal behaviour */
+const levelModal = document.getElementById("levelModal");
+document.getElementById("levelBtn").onclick = () => { levelModal.style.display = "flex"; };
+document.getElementById("levelClose").onclick = () => { levelModal.style.display = "none"; };
+document.querySelectorAll(".level-card").forEach(btn=>{
+  btn.onclick = () => {
+    const lvl = btn.dataset.level;
+    flyToLevel(lvl);
+    levelModal.style.display = "none";
+  };
+});
 
 /* ---------- Firebase glue ---------- */
 let firebaseDb = null;
@@ -649,7 +768,6 @@ let firebaseDb = null;
     if (firebase.apps.length === 0) firebase.initializeApp(firebaseConfig);
     firebaseDb = firebase.database();
 
-    // Live read from /Tracking
     const ref = firebaseDb.ref("/Tracking");
     ref.on("value",(snap)=>{
       const data = snap.val() || {};
@@ -666,7 +784,7 @@ let firebaseDb = null;
           lng,
           gatewayId: v.gatewayId || "—",
           lastUpdate: v.timestamp || v.lastUpdate || "",
-          type: v.type || "beacon"   // NEW: default
+          type: v.type || "beacon"
         });
       }
       beacons = arr;
@@ -676,7 +794,6 @@ let firebaseDb = null;
   }catch(e){ console.error("Firebase init error:", e); toast("Firebase init error — see console"); }
 })();
 
-// Helper: write one beacon record to /Tracking/<trolleyId>
 async function writeToFirebaseRec(payload){
   if(!firebaseDb) { console.warn("No Firebase DB (likely missing config)"); return; }
   const id = payload.trolleyId || payload.id; if(!id) return;
@@ -704,16 +821,12 @@ map.on("click",async e=>{
 
   const b = { id: trolleyId, name, zone: zoneId, lat: e.latlng.lat, lng: e.latlng.lng, gatewayId: "—", lastUpdate: nowIso, type:"beacon" };
 
-  // Local immediate UI update
   beacons.push(b); render(); showDetails(b);
 
-  // Payload for Firebase + uibuilder
   const fbPayload = { zoneId, trolleyId, latitude: b.lat, longitude: b.lng, rssi: -24, timestamp: nowIso, type:"beacon" };
 
-  // Write to Firebase
   writeToFirebaseRec(fbPayload);
 
-  // Keep original uibuilder send (no removal)
   try{
     if(ui && typeof ui.send === "function"){ ui.send({ payload: fbPayload }); toast("Beacon sent (uibuilder + Firebase)"); }
     else if(window.uibuilder && typeof window.uibuilder.send === "function"){ window.uibuilder.send({ payload: fbPayload }); toast("Beacon sent (uibuilder + Firebase)"); }
