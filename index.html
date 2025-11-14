@@ -10,7 +10,7 @@
 
 <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css">
 <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css">
-<script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.js"></script>
+<script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
 
 <!-- uibuilder client for Node-RED (safe to 404 on GitHub Pages) -->
 <script src="/uibuilder/uibuilder.iife.min.js"></script>
@@ -20,72 +20,48 @@
 <script src="https://www.gstatic.com/firebasejs/11.0.1/firebase-database-compat.js"></script>
 
 <style>
-/* ---------- Theme: light + soft cards (HomiQ + taxi UI vibe) ---------- */
+/* ---------- Light, app-like theme (only CSS changed) ---------- */
 :root{
-  --bg:#e5edf7;
-  --bg-grad-from:#e5edf7;
-  --bg-grad-to:#fdfbff;
+  --bg:#e8f0fb;
   --panel:#f9fafb;
   --panel-2:#ffffff;
-  --text:#0b1220;
+  --text:#020617;
   --muted:#6b7280;
   --border:#e2e8f0;
   --accent:#0ea5e9;
-  --accent-soft:#e0f2fe;
   --accent-2:#22c55e;
   --danger:#ef4444;
   --chip:#f3f4f6;
-  --chip-br:#d1d5db;
+  --chip-br:#cbd5e1;
 }
 *{box-sizing:border-box}
 body{
   margin:0;
-  min-height:100vh;
-  background:radial-gradient(1200px 1200px at 0% 0%,var(--bg-grad-from),var(--bg-grad-to));
+  background:radial-gradient(1000px 1000px at 0% 0%,#e0edff,#fdfbff);
   color:var(--text);
   font-family:Inter,ui-sans-serif,system-ui,Segoe UI,Roboto,Arial;
 }
 
-/* ---------- Header: soft app bar ---------- */
+/* top bar */
 header{
   position:sticky;
   top:0;
   z-index:10;
-  padding:10px 18px 12px;
+  background:linear-gradient(180deg,rgba(255,255,255,.96),rgba(248,250,252,.92));
+  backdrop-filter:blur(14px);
+  border-bottom:1px solid rgba(226,232,240,.9);
   display:flex;
   flex-wrap:wrap;
   gap:10px;
   align-items:center;
-  backdrop-filter:blur(14px);
-  background:linear-gradient(180deg,rgba(255,255,255,.92),rgba(248,250,252,.88));
-  border-bottom:1px solid rgba(226,232,240,.9);
+  padding:10px 16px;
 }
 header h1{
   font-size:18px;
-  margin:0;
+  margin:0 12px 0 0;
   font-weight:800;
   letter-spacing:.04em;
 }
-header .subtitle{
-  font-size:11px;
-  color:var(--muted);
-  text-transform:uppercase;
-  letter-spacing:.18em;
-}
-.header-left{
-  display:flex;
-  flex-direction:column;
-  gap:2px;
-}
-.header-row{
-  display:flex;
-  flex:1;
-  flex-wrap:wrap;
-  gap:8px;
-  align-items:center;
-  justify-content:flex-end;
-}
-
 input,select,button{
   background:#f3f4f6;
   border:1px solid var(--chip-br);
@@ -96,61 +72,60 @@ input,select,button{
   outline:none;
 }
 input::placeholder{color:#9ca3af}
-select{padding-right:28px;}
 select option{background:#ffffff;color:var(--text)}
 button.accent{
   background:var(--accent);
-  color:#0b0f15;
+  color:#020617;
   border:none;
-  box-shadow:0 8px 16px rgba(14,165,233,.25);
+  box-shadow:0 8px 16px rgba(14,165,233,.28);
 }
 button.ghost{
   background:#f3f4f6;
-  color:var(--text);
+  color:#020617;
   border:1px solid var(--chip-br);
 }
 button.danger{
   background:var(--danger);
   color:#fff;
   border:none;
-  box-shadow:0 8px 16px rgba(239,68,68,.25);
+  box-shadow:0 8px 16px rgba(239,68,68,.28);
 }
 button:disabled{opacity:.6;cursor:not-allowed}
 .small{font-size:12px}
 .muted{color:var(--muted)}
 
-/* ---------- Layout ---------- */
+/* layout */
 main{
   display:grid;
-  grid-template-columns: minmax(0,1.6fr) minmax(360px,420px);
+  grid-template-columns: minmax(0,1.7fr) minmax(340px,380px);
   gap:18px;
-  padding:14px 18px 18px;
-  height:calc(100vh - 64px);
+  height:calc(100vh - 60px);
+  padding:14px 16px 16px;
 }
-.map-shell{
-  border-radius:28px;
+#map{
+  width:100%;
+  height:100%;
+  border-radius:26px;
   overflow:hidden;
-  box-shadow:0 24px 60px rgba(15,23,42,.25);
-  background:#dbeafe;
+  box-shadow:0 24px 55px rgba(15,23,42,.35);
 }
-#map{width:100%;height:100%}
-
 aside{
   background:transparent;
+  border-left:none;
   padding:0;
   overflow:auto;
 }
 
-/* ---------- Cards & list ---------- */
+/* cards / list */
 .card{
   background:var(--panel-2);
   border:1px solid var(--border);
-  border-radius:24px;
+  border-radius:22px;
   padding:14px;
   margin-bottom:14px;
   box-shadow:
-    0 1px 0 rgba(148,163,184,.4),
-    0 18px 40px rgba(15,23,42,.15);
+    0 1px 0 rgba(148,163,184,.45),
+    0 18px 38px rgba(15,23,42,.18);
 }
 .row{display:flex;justify-content:space-between;gap:8px;align-items:center}
 hr{border:none;border-top:1px solid var(--border);margin:10px 0}
@@ -161,7 +136,7 @@ hr{border:none;border-top:1px solid var(--border);margin:10px 0}
   font-size:11px;
   border:1px solid var(--chip-br);
   background:var(--chip);
-  color:#1e40af;
+  color:#1e3a8a;
 }
 .list{
   display:flex;
@@ -173,7 +148,7 @@ hr{border:none;border-top:1px solid var(--border);margin:10px 0}
 .item{
   border:1px solid var(--chip-br);
   border-radius:18px;
-  padding:9px 11px;
+  padding:8px 11px;
   cursor:pointer;
   background:#f9fafb;
   transition:.16s ease;
@@ -183,14 +158,16 @@ hr{border:none;border-top:1px solid var(--border);margin:10px 0}
   border-color:var(--accent);
   box-shadow:0 10px 20px rgba(148,163,184,.35);
 }
+
+/* toast / banner / dialogs */
 .toast{
   position:fixed;
-  right:18px;
-  bottom:18px;
-  background:#0f172a;
-  border:1px solid rgba(148,163,184,.9);
-  color:#fff;
-  padding:9px 13px;
+  right:16px;
+  bottom:16px;
+  background:#020617;
+  border:1px solid rgba(148,163,184,.85);
+  color:#f9fafb;
+  padding:8px 12px;
   border-radius:999px;
   opacity:0;
   transform:translateY(10px);
@@ -203,22 +180,20 @@ hr{border:none;border-top:1px solid var(--border);margin:10px 0}
   position:absolute;
   left:50%;
   transform:translateX(-50%);
-  top:76px;
-  background:#111827;
+  top:68px;
+  background:#020617;
   border:1px solid rgba(148,163,184,.8);
   color:#e5e7eb;
-  padding:7px 12px;
+  padding:6px 11px;
   border-radius:999px;
   font-size:13px;
   display:none;
   z-index:600;
 }
-
-/* ---------- Modal / confirm ---------- */
 .confirm{
   position:fixed;
   inset:0;
-  background:rgba(15,23,42,.4);
+  background:rgba(15,23,42,.45);
   display:none;
   align-items:center;
   justify-content:center;
@@ -227,13 +202,13 @@ hr{border:none;border-top:1px solid var(--border);margin:10px 0}
 .dialog{
   background:var(--panel-2);
   border:1px solid var(--border);
-  border-radius:22px;
-  padding:18px;
+  border-radius:20px;
+  padding:16px;
   width:min(420px,90vw);
   box-shadow:0 26px 70px rgba(15,23,42,.35);
 }
 
-/* ---------- Stats ---------- */
+/* stats */
 .progress-row{display:flex;align-items:center;gap:10px;margin:8px 0}
 .progress-label{width:68px;color:var(--muted);font-size:12px}
 .progress-bar{
@@ -246,7 +221,7 @@ hr{border:none;border-top:1px solid var(--border);margin:10px 0}
 }
 .progress-fill{
   height:100%;
-  background:linear-gradient(90deg,var(--accent),#4f46e5);
+  background:linear-gradient(90deg,var(--accent),#6366f1);
 }
 .quick-filters{
   display:grid;
@@ -256,7 +231,7 @@ hr{border:none;border-top:1px solid var(--border);margin:10px 0}
 }
 .quick-filters button{
   padding:8px 0;
-  border-radius:18px;
+  border-radius:16px;
   border:1px solid var(--chip-br);
   background:#f3f4f6;
   cursor:pointer;
@@ -264,28 +239,28 @@ hr{border:none;border-top:1px solid var(--border);margin:10px 0}
 }
 .quick-filters button.active{
   border-color:var(--accent);
-  background:var(--accent-soft);
-  box-shadow:0 0 0 1px rgba(14,165,233,.25);
+  background:#e0f2fe;
+  box-shadow:0 0 0 1px rgba(14,165,233,.2);
 }
 
-/* ---------- Finder overlay ---------- */
+/* finder overlay */
 #finder{
   position:fixed;
   inset:0;
   display:none;
   z-index:1400;
-  background:radial-gradient(1200px 1200px at 50% -200px,#0b0f15,#0f172a 70%,#020617);
+  background:radial-gradient(1200px 1200px at 50% -200px,#020617,#0f172a 70%,#020617);
   align-items:center;
   justify-content:center;
   flex-direction:column;
   gap:18px;
 }
 .finder-title{text-align:center}
-#viz{width:260px;height:260px;filter:drop-shadow(0 18px 40px rgba(0,0,0,.6))}
+#viz{width:260px;height:260px;filter:drop-shadow(0 20px 40px rgba(0,0,0,.6))}
 #arrowSpin{transform-origin:50% 50%;transition:transform .08s linear}
 .finder-chip{
   display:inline-block;
-  border:1px solid var(--chip-br);
+  border:1px solid #1f2937;
   background:#020617;
   border-radius:999px;
   padding:6px 10px;
@@ -294,67 +269,50 @@ hr{border:none;border-top:1px solid var(--border);margin:10px 0}
 }
 .finder-cta{display:flex;gap:10px;margin-top:8px;justify-content:center}
 
-/* ---------- Responsive ---------- */
 @media(max-width:980px){
   main{
     grid-template-columns:1fr;
-    grid-template-rows:auto auto;
+    grid-template-rows:340px auto;
     height:auto;
-  }
-  .map-shell{
-    height:360px;
-    border-radius:24px;
-  }
-  aside{
-    margin-top:4px;
   }
 }
 </style>
 </head>
 <body>
 <header>
-  <div class="header-left">
-    <span class="subtitle">Terminal navigation</span>
-    <h1>Terminal Map</h1>
-  </div>
+  <h1>Terminal Map</h1>
+  <input id="search" placeholder="Search beacon…" />
 
-  <div class="header-row">
-    <input id="search" placeholder="Search beacon…" />
+  <!-- NEW: simple dropdown to toggle mode -->
+  <select id="viewMode">
+    <option value="beacon">Beacons</option>
+    <option value="gateway">Gateways</option>
+  </select>
 
-    <!-- NEW: View mode dropdown -->
-    <select id="viewMode">
-      <option value="beacon">Beacons</option>
-      <option value="gateway">Gateways</option>
-    </select>
-
-    <select id="zoneFilter">
-      <option value="">All zones</option>
-      <option>Zone A</option><option>Zone B</option><option>Zone C</option>
-    </select>
-
-    <button id="refresh" class="accent">Refresh</button>
-    <button id="addBtn" class="accent">Add Beacon 😊</button>
-    <span class="muted small" id="lastSync">Last sync: —</span>
-  </div>
+  <select id="zoneFilter">
+    <option value="">All zones</option>
+    <option>Zone A</option><option>Zone B</option><option>Zone C</option>
+  </select>
+  <button id="refresh" class="accent">Refresh</button>
+  <button id="addBtn" class="accent">Add Beacon 😊</button>
+  <span class="muted small" id="lastSync">Last sync: —</span>
 </header>
 
 <div class="banner" id="placementBanner">Placement mode – click on map to place new beacon • Esc to cancel</div>
 
 <main>
-  <div class="map-shell">
-    <div id="map"></div>
-  </div>
+  <div id="map"></div>
 
   <aside>
     <div class="card" id="statsCard">
       <div class="row" style="align-items:flex-end;">
         <div>
-          <div class="small muted" style="letter-spacing:.12em;text-transform:uppercase">Total items</div>
+          <div class="small muted" style="letter-spacing:.12em;text-transform:uppercase">Total number of items</div>
           <div style="font-size:28px;font-weight:800;margin-top:4px" id="totalCount">0</div>
         </div>
         <span class="pill" id="activeZonePill">All zones</span>
       </div>
-      <div class="small muted" style="margin-top:6px" id="activeModeLabel">Showing: Beacons</div>
+      <div class="small muted" id="activeModeLabel" style="margin-top:4px;">Showing: Beacons</div>
       <div class="quick-filters" style="margin-top:10px">
         <button data-zone="" class="zf active">All</button>
         <button data-zone="Zone A" class="zf">Zone A</button>
@@ -372,12 +330,12 @@ hr{border:none;border-top:1px solid var(--border);margin:10px 0}
       </div>
       <div id="overviewZoneLine" class="small muted" style="margin:6px 0 8px 0;">All zones</div>
       <div id="overviewList" class="list"></div>
-      <div id="overviewEmpty" class="small muted" style="display:none;">No items in this filter.</div>
+      <div id="overviewEmpty" class="small muted" style="display:none;">No beacons in this filter.</div>
     </div>
 
     <div class="card" id="detailsEmpty">
-      <b>No item selected</b>
-      <div class="muted small">Click a pin or a list item for details.</div>
+      <b>No beacon selected</b>
+      <div class="muted small">Click a beacon or a list item for details.</div>
     </div>
 
     <div class="card" id="details" style="display:none">
@@ -415,7 +373,7 @@ hr{border:none;border-top:1px solid var(--border);margin:10px 0}
     <label class="small muted">Zone ID</label>
     <select id="m_zoneId" style="width:100%;margin-bottom:10px;">
       <option value="">Select a Zone</option>
-      <!-- T1-ZONE-A removed as requested -->
+      <!-- Removed T1-ZONE-A option as requested -->
       <option value="Zone A">Zone A</option>
       <option value="Zone B">Zone B</option>
       <option value="Zone C">Zone C</option>
@@ -487,10 +445,7 @@ if (window.uibuilder) ui = window.uibuilder;
 /* ---------- Map ---------- */
 const TP_CENTER = [1.3455, 103.9323];
 const map = L.map("map").setView(TP_CENTER, 17);
-L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-  maxZoom: 19,
-  attribution: "&copy; OSM"
-}).addTo(map);
+L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19, attribution: "&copy; OSM" }).addTo(map);
 const clusters = L.markerClusterGroup({ disableClusteringAtZoom: 19 });
 map.addLayer(clusters);
 
@@ -499,7 +454,7 @@ let beacons = [];
 const idToMarker = new Map();
 let searchText = "";
 let zoneFilter = "";
-let viewMode = "beacon";       // NEW: "beacon" or "gateway"
+let viewMode = "beacon";   // NEW: beacon / gateway
 let placementMode = false;
 let pendingBeacon = null;
 let selectedId = null;
@@ -514,25 +469,21 @@ let orientationHandler = null;
 
 /* ---------- Helpers ---------- */
 function escapeH(s){
-  return String(s ?? "").replace(/[&<>"']/g, m => ({"&":"&amp;","<":"&lt;"," >":"&gt;","\"":"&quot;","'":"&#39;"}[m]));
+  return String(s ?? "").replace(/[&<>"']/g, m => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[m]));
 }
-function popupHtml(b){
-  return `<b>${escapeH(b.name)}</b> <span class="pill">${escapeH(b.zone)}</span><br><small>ID:${escapeH(b.id)}</small>`;
-}
+function popupHtml(b){ return `<b>${escapeH(b.name)}</b> <span class="pill">${escapeH(b.zone)}</span><br><small>ID:${escapeH(b.id)}</small>`; }
 function fits(b){
   const zoneOK = !zoneFilter || String(b.zone||"").toLowerCase() === zoneFilter.toLowerCase();
   const text = ((b.name||"")+" "+(b.id||"")).toLowerCase();
   const searchOK = !searchText || text.includes(searchText.toLowerCase());
+
+  // NEW: filter by type based on dropdown (default everything is "beacon")
   const type = b.type || "beacon";
   const modeOK = !viewMode || type === viewMode;
+
   return zoneOK && searchOK && modeOK;
 }
-function toast(t){
-  const el = document.getElementById("toast");
-  el.textContent = t;
-  el.classList.add("show");
-  setTimeout(()=>el.classList.remove("show"),1500);
-}
+function toast(t){ const el = document.getElementById("toast"); el.textContent = t; el.classList.add("show"); setTimeout(()=>el.classList.remove("show"),1500); }
 const toRad = d => d * Math.PI / 180;
 const toDeg = r => r * 180 / Math.PI;
 function haversine(aLat,aLng,bLat,bLng){
@@ -568,6 +519,7 @@ document.getElementById("btnDelete").onclick = () => { if(!selectedId) return; c
 document.getElementById("c_ok").onclick = async () => {
   const id = selectedId; confirmBox.style.display = "none"; if(!id) return;
 
+  // Delete in Firebase first
   try{
     if(!firebaseDb){ throw new Error("Firebase not initialised"); }
     await firebaseDb.ref(`/Tracking/${id}`).remove();
@@ -575,9 +527,10 @@ document.getElementById("c_ok").onclick = async () => {
   }catch(e){
     console.error("Firebase delete error:", e);
     toast("Delete failed: " + (e?.message || e));
-    return;
+    return; // don't mutate local list if remote failed
   }
 
+  // Local UI clean-up (live listener will also refresh state)
   beacons = beacons.filter(b=>b.id!==id);
   render();
   document.getElementById("details").style.display = "none";
@@ -586,12 +539,14 @@ document.getElementById("c_ok").onclick = async () => {
 
 /* ---------- Stats ---------- */
 function renderStats(){
-  const filteredForMode = beacons.filter(b => (b.type || "beacon") === viewMode);
-  const total = filteredForMode.length;
+  const total = beacons.filter(b => (b.type || "beacon") === viewMode).length;
   document.getElementById("totalCount").textContent = total;
-
   const counts = {"Zone A":0,"Zone B":0,"Zone C":0};
-  filteredForMode.forEach(b => { if(counts[b.zone] !== undefined) counts[b.zone]++; });
+  beacons.forEach(b => {
+    const type = b.type || "beacon";
+    if (type !== viewMode) return;
+    if (counts[b.zone] !== undefined) counts[b.zone]++;
+  });
   const max = Math.max(1, ...Object.values(counts));
   const zEl = document.getElementById("zoneProgress"); zEl.innerHTML = "";
   Object.entries(counts).forEach(([label,val])=>{
@@ -600,11 +555,8 @@ function renderStats(){
     zEl.appendChild(row);
   });
   document.getElementById("activeZonePill").textContent = zoneFilter || "All zones";
-  document.getElementById("activeModeLabel").textContent =
-    "Showing: " + (viewMode === "gateway" ? "Gateways" : "Beacons");
-  document.querySelectorAll(".quick-filters .zf").forEach(btn=>{
-    btn.classList.toggle("active",(btn.dataset.zone||"")===zoneFilter);
-  });
+  document.getElementById("activeModeLabel").textContent = "Showing: " + (viewMode === "gateway" ? "Gateways" : "Beacons");
+  document.querySelectorAll(".quick-filters .zf").forEach(btn=>{ btn.classList.toggle("active",(btn.dataset.zone||"")===zoneFilter); });
 }
 
 /* ---------- Markers & Lists ---------- */
@@ -612,14 +564,8 @@ function renderMarkers(){
   clusters.clearLayers(); idToMarker.clear();
   beacons.forEach(b=>{
     if(!fits(b) || b.lat == null || b.lng == null) return;
-    const color = (b.type === "gateway") ? "#22c55e" : "#0ea5e9";
-    const m = L.circleMarker([b.lat,b.lng],{
-        radius:8,
-        color:color,
-        fillColor:color,
-        fillOpacity:.95,
-        weight:2
-      })
+    const color = (b.type || "beacon") === "gateway" ? "#22c55e" : "#0ea5e9";
+    const m = L.circleMarker([b.lat,b.lng],{ radius:8,color:color,fillColor:color,fillOpacity:.95,weight:2 })
       .on("click",()=>{ showDetails(b); m.openPopup(); })
       .bindPopup(popupHtml(b));
     idToMarker.set(b.id,m); clusters.addLayer(m);
@@ -636,25 +582,9 @@ function renderOverview(){
   if(filtered.length===0){ emptyEl.style.display = "block"; return; }
   emptyEl.style.display = "none";
   filtered.forEach(b=>{
-    const labelType = b.type === "gateway" ? "Gateway" : "Beacon";
     const div = document.createElement("div"); div.className = "item";
-    div.innerHTML =
-      `<div class="row">
-         <div>
-           <b>${escapeH(b.name||labelType)}</b>
-           <span class="pill">${escapeH(b.zone||"-")}</span>
-         </div>
-         <div class="small muted">${escapeH(b.id||"-")}</div>
-       </div>
-       <div class="small muted">
-         ${(b.lat!=null&&b.lng!=null)?`${(+b.lat).toFixed(5)}, ${(+b.lng).toFixed(5)}`:"—"}
-         · ${escapeH(b.lastUpdate||"—")}
-       </div>`;
-    div.onclick = ()=>{
-      const m = idToMarker.get(b.id);
-      if(m){ map.panTo([b.lat,b.lng]); m.openPopup(); }
-      showDetails(b);
-    };
+    div.innerHTML = `<div class="row"><div><b>${escapeH(b.name||"Beacon")}</b> <span class="pill">${escapeH(b.zone||"-")}</span></div><div class="small muted">${escapeH(b.id||"-")}</div></div><div class="small muted">${(b.lat!=null&&b.lng!=null)?`${(+b.lat).toFixed(5)}, ${(+b.lng).toFixed(5)}`:"—"} · ${escapeH(b.lastUpdate||"—")}</div>`;
+    div.onclick = ()=>{ const m = idToMarker.get(b.id); if(m){ map.panTo([b.lat,b.lng]); m.openPopup(); } showDetails(b); };
     listEl.appendChild(div);
   });
 }
@@ -662,41 +592,29 @@ function render(){ renderMarkers(); renderOverview(); renderStats(); }
 
 /* ---------- Initial / fallback data ---------- */
 async function fetchBeacons(){
-  try{
-    const r = await fetch(API_URL); if(!r.ok) throw 0;
-    const j = await r.json(); return Array.isArray(j)?j:[];
-  }catch{ return []; }
+  try{ const r = await fetch(API_URL); if(!r.ok) throw 0; const j = await r.json(); return Array.isArray(j)?j:[]; }catch{ return []; }
 }
 async function refresh(){
   const fetched = await fetchBeacons();
   const mapB = new Map(beacons.map(b=>[b.id,b]));
   fetched.forEach(fb=>mapB.set(fb.id,fb));
   beacons = [...mapB.values()];
-  document.getElementById("lastSync").textContent =
-    "Last sync: " + new Date().toLocaleTimeString();
+  document.getElementById("lastSync").textContent = "Last sync: " + new Date().toLocaleTimeString();
   render();
 }
 
-/* ---------- UI events ---------- */
-document.getElementById("search").oninput = e=>{
-  searchText = e.target.value.trim(); render();
-};
-document.getElementById("zoneFilter").onchange = e=>{
-  zoneFilter = e.target.value.trim(); render();
-};
+document.getElementById("search").oninput = e=>{ searchText = e.target.value.trim(); render(); };
+document.getElementById("zoneFilter").onchange = e=>{ zoneFilter = e.target.value.trim(); render(); };
+document.getElementById("refresh").onclick = refresh;
+
+// NEW: viewMode dropdown hook
 document.getElementById("viewMode").onchange = e=>{
   viewMode = e.target.value;
   render();
 };
-document.getElementById("refresh").onclick = refresh;
 
 document.querySelectorAll(".quick-filters").forEach(group=>{
-  group.addEventListener("click",e=>{
-    const btn = e.target.closest(".zf"); if(!btn) return;
-    zoneFilter = btn.dataset.zone || "";
-    document.getElementById("zoneFilter").value = zoneFilter;
-    render();
-  });
+  group.addEventListener("click",e=>{ const btn = e.target.closest(".zf"); if(!btn) return; zoneFilter = btn.dataset.zone || ""; document.getElementById("zoneFilter").value = zoneFilter; render(); });
 });
 
 /* ---------- Add Beacon (ZoneID + TrolleyID) ---------- */
@@ -708,23 +626,10 @@ document.getElementById("m_cancel").onclick = () => { modal.style.display = "non
 document.getElementById("m_continue").onclick = () => {
   const zoneId = document.getElementById("m_zoneId").value.trim();
   const trolleyId = document.getElementById("m_trolleyId").value.trim();
-  if(!zoneId || !trolleyId){
-    toast("Please select Zone ID and enter Trolley ID");
-    return;
-  }
-  modal.style.display = "none";
-  placementMode = true;
-  pendingBeacon = { zoneId, trolleyId };
-  banner.style.display = "block";
+  if(!zoneId || !trolleyId){ toast("Please select Zone ID and enter Trolley ID"); return; }
+  modal.style.display = "none"; placementMode = true; pendingBeacon = { zoneId, trolleyId }; banner.style.display = "block";
 };
-window.onkeydown = e => {
-  if(e.key === "Escape"){
-    placementMode = false;
-    pendingBeacon = null;
-    banner.style.display = "none";
-    modal.style.display = "none";
-  }
-};
+window.onkeydown = e => { if(e.key === "Escape"){ placementMode = false; pendingBeacon = null; banner.style.display = "none"; modal.style.display = "none"; } };
 
 /* ---------- Firebase glue ---------- */
 let firebaseDb = null;
@@ -744,6 +649,7 @@ let firebaseDb = null;
     if (firebase.apps.length === 0) firebase.initializeApp(firebaseConfig);
     firebaseDb = firebase.database();
 
+    // Live read from /Tracking
     const ref = firebaseDb.ref("/Tracking");
     ref.on("value",(snap)=>{
       const data = snap.val() || {};
@@ -760,21 +666,14 @@ let firebaseDb = null;
           lng,
           gatewayId: v.gatewayId || "—",
           lastUpdate: v.timestamp || v.lastUpdate || "",
-          type: v.type || "beacon"      // NEW: default everything to beacon
+          type: v.type || "beacon"   // NEW: default
         });
       }
       beacons = arr;
-      document.getElementById("lastSync").textContent =
-        "Last sync: " + new Date().toLocaleTimeString();
+      document.getElementById("lastSync").textContent = "Last sync: " + new Date().toLocaleTimeString();
       render();
-    },(err)=>{
-      console.error("Firebase read error:", err);
-      toast("Firebase read error: " + err.message);
-    });
-  }catch(e){
-    console.error("Firebase init error:", e);
-    toast("Firebase init error — see console");
-  }
+    },(err)=>{ console.error("Firebase read error:", err); toast("Firebase read error: " + err.message); });
+  }catch(e){ console.error("Firebase init error:", e); toast("Firebase init error — see console"); }
 })();
 
 // Helper: write one beacon record to /Tracking/<trolleyId>
@@ -791,64 +690,35 @@ async function writeToFirebaseRec(payload){
     timestamp: payload.timestamp || new Date().toISOString(),
     type: "beacon"
   };
-  try{
-    await firebaseDb.ref(`/Tracking/${id}`).set(obj);
-  }catch(e){
-    console.error("Firebase write error:", e);
-    toast("Firebase write error: " + e.message);
-  }
+  try{ await firebaseDb.ref(`/Tracking/${id}`).set(obj); }catch(e){ console.error("Firebase write error:", e); toast("Firebase write error: " + e.message); }
 }
 
 /* ---------- Map click → place & save ---------- */
 map.on("click",async e=>{
   if(!placementMode || !pendingBeacon) return;
-  placementMode = false;
-  banner.style.display = "none";
+  placementMode = false; banner.style.display = "none";
 
   const { zoneId, trolleyId } = pendingBeacon;
   const name = `${zoneId} • ${trolleyId}`;
   const nowIso = new Date().toISOString();
 
-  const b = {
-    id: trolleyId,
-    name,
-    zone: zoneId,
-    lat: e.latlng.lat,
-    lng: e.latlng.lng,
-    gatewayId: "—",
-    lastUpdate: nowIso,
-    type: "beacon"
-  };
+  const b = { id: trolleyId, name, zone: zoneId, lat: e.latlng.lat, lng: e.latlng.lng, gatewayId: "—", lastUpdate: nowIso, type:"beacon" };
 
-  beacons.push(b);
-  render();
-  showDetails(b);
+  // Local immediate UI update
+  beacons.push(b); render(); showDetails(b);
 
-  const fbPayload = {
-    zoneId,
-    trolleyId,
-    latitude: b.lat,
-    longitude: b.lng,
-    rssi: -24,
-    timestamp: nowIso,
-    type: "beacon"
-  };
+  // Payload for Firebase + uibuilder
+  const fbPayload = { zoneId, trolleyId, latitude: b.lat, longitude: b.lng, rssi: -24, timestamp: nowIso, type:"beacon" };
 
+  // Write to Firebase
   writeToFirebaseRec(fbPayload);
 
+  // Keep original uibuilder send (no removal)
   try{
-    if(ui && typeof ui.send === "function"){
-      ui.send({ payload: fbPayload });
-      toast("Beacon sent (uibuilder + Firebase)");
-    }else if(window.uibuilder && typeof window.uibuilder.send === "function"){
-      window.uibuilder.send({ payload: fbPayload });
-      toast("Beacon sent (uibuilder + Firebase)");
-    }else{
-      toast("Saved to Firebase");
-    }
-  }catch(err){
-    console.warn("uibuilder send failed", err);
-  }
+    if(ui && typeof ui.send === "function"){ ui.send({ payload: fbPayload }); toast("Beacon sent (uibuilder + Firebase)"); }
+    else if(window.uibuilder && typeof window.uibuilder.send === "function"){ window.uibuilder.send({ payload: fbPayload }); toast("Beacon sent (uibuilder + Firebase)"); }
+    else { toast("Saved to Firebase"); }
+  }catch(err){ console.warn("uibuilder send failed", err); }
 
   pendingBeacon = null;
 });
@@ -860,90 +730,38 @@ const findDistanceEl = document.getElementById("findDistance");
 const findHintEl = document.getElementById("findHint");
 const arrowSpin = document.getElementById("arrowSpin");
 function setArrowRotation(deg){ arrowSpin.style.transform = `rotate(${deg}deg)`; }
-function varAccent2(){
-  return getComputedStyle(document.documentElement)
-    .getPropertyValue('--accent-2').trim() || '#22c55e';
-}
+function varAccent2(){ return getComputedStyle(document.documentElement).getPropertyValue('--accent-2').trim() || '#22c55e'; }
 function startFinder(beacon){
-  if(!beacon || beacon.lat==null || beacon.lng==null){
-    toast("Beacon has no coordinates"); return;
-  }
+  if(!beacon || beacon.lat==null || beacon.lng==null){ toast("Beacon has no coordinates"); return; }
   targetLatLng = [+beacon.lat, +beacon.lng];
   findTargetEl.textContent = beacon.name || beacon.id || "Target";
   finderEl.style.display = "flex"; map.panTo(targetLatLng);
 
-  if(!navigator.geolocation){
-    findHintEl.textContent = "Geolocation not supported."; return;
-  }
+  if(!navigator.geolocation){ findHintEl.textContent = "Geolocation not supported."; return; }
 
-  userMarker = userMarker || L.circleMarker(map.getCenter(), {
-    radius:7,
-    color:varAccent2(),
-    fillColor:varAccent2(),
-    fillOpacity:.95
-  }).addTo(map);
+  userMarker = userMarker || L.circleMarker(map.getCenter(), {radius:7,color:varAccent2(),fillColor:varAccent2(),fillOpacity:.95}).addTo(map);
 
   watchId = navigator.geolocation.watchPosition(pos=>{
     const { latitude, longitude, heading } = pos.coords;
-    const aLat = latitude, aLng = longitude;
-    const [bLat,bLng] = targetLatLng;
-    const dist = haversine(aLat,aLng,bLat,bLng);
-    const bearing = bearingBetween(aLat,aLng,bLat,bLng);
-    const deviceHeading = (headingDeg!=null) ? headingDeg :
-      (Number.isFinite(heading) ? heading : null);
-    const relative = (deviceHeading!=null) ?
-      ((bearing - deviceHeading + 360) % 360) : bearing;
-    setArrowRotation(relative);
-    findDistanceEl.textContent =
-      dist>1000 ? (dist/1000).toFixed(2)+" km" : Math.round(dist)+" m";
+    const aLat = latitude, aLng = longitude; const [bLat,bLng] = targetLatLng;
+    const dist = haversine(aLat,aLng,bLat,bLng); const bearing = bearingBetween(aLat,aLng,bLat,bLng);
+    const deviceHeading = (headingDeg!=null) ? headingDeg : (Number.isFinite(heading) ? heading : null);
+    const relative = (deviceHeading!=null) ? ((bearing - deviceHeading + 360) % 360) : bearing;
+    setArrowRotation(relative); findDistanceEl.textContent = dist>1000 ? (dist/1000).toFixed(2)+" km" : Math.round(dist)+" m";
     userMarker.setLatLng([aLat,aLng]);
-  }, err=>{
-    findHintEl.textContent = "Location error: " + err.message;
-  }, {enableHighAccuracy:true,maximumAge:1000,timeout:10000});
+  }, err=>{ findHintEl.textContent = "Location error: " + err.message; }, {enableHighAccuracy:true,maximumAge:1000,timeout:10000});
 
-  orientationHandler = e=>{
-    if(typeof e.webkitCompassHeading === "number")
-      headingDeg = e.webkitCompassHeading;
-    else if(e.absolute && e.alpha!=null)
-      headingDeg = 360 - e.alpha;
-  };
+  orientationHandler = e=>{ if(typeof e.webkitCompassHeading === "number") headingDeg = e.webkitCompassHeading; else if(e.absolute && e.alpha!=null) headingDeg = 360 - e.alpha; };
   if(window.DeviceOrientationEvent){
-    if(typeof DeviceOrientationEvent.requestPermission === "function"){
-      DeviceOrientationEvent.requestPermission().then(state=>{
-        if(state === "granted"){
-          window.addEventListener("deviceorientation",orientationHandler,true);
-        }else{
-          findHintEl.textContent =
-            "Compass permission denied; arrow uses map north.";
-        }
-      }).catch(()=>{
-        findHintEl.textContent =
-          "Compass not available; arrow uses map north.";
-      });
-    }else{
-      window.addEventListener("deviceorientation",orientationHandler,true);
-    }
-  }else{
-    findHintEl.textContent = "No compass API; arrow uses map north.";
-  }
+    if(typeof DeviceOrientationEvent.requestPermission === "function"){ DeviceOrientationEvent.requestPermission().then(state=>{ if(state === "granted"){ window.addEventListener("deviceorientation",orientationHandler,true); } else { findHintEl.textContent = "Compass permission denied; arrow uses map north."; } }).catch(()=>{ findHintEl.textContent = "Compass not available; arrow uses map north."; }); }
+    else { window.addEventListener("deviceorientation",orientationHandler,true); }
+  }else{ findHintEl.textContent = "No compass API; arrow uses map north."; }
 }
-function stopFinder(){
-  finderEl.style.display = "none";
-  if(watchId!=null){ navigator.geolocation.clearWatch(watchId); watchId = null; }
-  if(orientationHandler){
-    window.removeEventListener("deviceorientation",orientationHandler,true);
-    orientationHandler = null;
-  }
-  headingDeg = null; targetLatLng = null;
-}
+function stopFinder(){ finderEl.style.display = "none"; if(watchId!=null){ navigator.geolocation.clearWatch(watchId); watchId = null; } if(orientationHandler){ window.removeEventListener("deviceorientation",orientationHandler,true); orientationHandler = null; } headingDeg = null; targetLatLng = null; }
 
-document.getElementById("btnSearch").onclick = () => {
-  if(selectedBeacon) startFinder(selectedBeacon);
-};
+document.getElementById("btnSearch").onclick = () => { if(selectedBeacon) startFinder(selectedBeacon); };
 document.getElementById("findExit").onclick = () => stopFinder();
-document.getElementById("findRecenter").onclick = () => {
-  if(userMarker){ map.panTo(userMarker.getLatLng()); }
-};
+document.getElementById("findRecenter").onclick = () => { if(userMarker){ map.panTo(userMarker.getLatLng()); } };
 
 /* ---------- uibuilder listener ---------- */
 if (ui && typeof ui.onChange === "function") {
@@ -954,16 +772,7 @@ if (ui && typeof ui.onChange === "function") {
       msg.payload.forEach(p => {
         const id = p.trolleyId || p.id; if (!id) return;
         const idx = beacons.findIndex(b => b.id === id);
-        const b = {
-          id,
-          name: (p.zoneId ? p.zoneId + ' • ' : '') + id,
-          zone: p.zoneId || '',
-          lat: p.latitude ?? p.lat,
-          lng: p.longitude ?? p.lng,
-          gatewayId: p.gatewayId || '—',
-          lastUpdate: p.timestamp || new Date().toISOString(),
-          type: p.type || "beacon"
-        };
+        const b = { id, name: (p.zoneId ? p.zoneId + ' • ' : '') + id, zone: p.zoneId || '', lat: p.latitude ?? p.lat, lng: p.longitude ?? p.lng, gatewayId: p.gatewayId || '—', lastUpdate: p.timestamp || new Date().toISOString(), type: p.type || "beacon" };
         if (idx >= 0) beacons[idx] = { ...beacons[idx], ...b }; else beacons.push(b);
       });
       render();
@@ -972,16 +781,7 @@ if (ui && typeof ui.onChange === "function") {
     if (msg.topic === 'beacon/update' && msg.payload) {
       const p = msg.payload; const id = p.trolleyId || p.id; if (!id) return;
       const idx = beacons.findIndex(b => b.id === id);
-      const b = {
-        id,
-        name: (p.zoneId ? p.zoneId + ' • ' : '') + id,
-        zone: p.zoneId || '',
-        lat: p.latitude ?? p.lat,
-        lng: p.longitude ?? p.lng,
-        gatewayId: p.gatewayId || '—',
-        lastUpdate: p.timestamp || new Date().toISOString(),
-        type: p.type || "beacon"
-      };
+      const b = { id, name: (p.zoneId ? p.zoneId + ' • ' : '') + id, zone: p.zoneId || '', lat: p.latitude ?? p.lat, lng: p.longitude ?? p.lng, gatewayId: p.gatewayId || '—', lastUpdate: p.timestamp || new Date().toISOString(), type: p.type || "beacon" };
       if (idx >= 0) beacons[idx] = { ...beacons[idx], ...b }; else beacons.push(b);
       render();
     }
