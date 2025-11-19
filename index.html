@@ -715,8 +715,8 @@ body.dark .home-avatar{
 
         <!-- 🔵 Zone coverage controls -->
         <hr>
-        <div class="small muted" style="margin-bottom:4px;">Zone coverage (blue circle)</div>
-        <div class="row" style="gap:8px;margin-bottom:6px;">
+        <div class="small muted" style="margin-bottom:4px;">Zone coverage (blue radius, fixed 50 m)</div>
+        <div class="row" style="gap:8px;margin-bottom:4px;">
           <select id="zoneRadiusSelect" style="flex:1;min-width:0;">
             <option value="Zone A">Zone A</option>
             <option value="Zone B">Zone B</option>
@@ -724,13 +724,7 @@ body.dark .home-avatar{
           </select>
           <button id="zoneCenterBtn" class="ghost small" style="white-space:nowrap;">Set zone centre on map</button>
         </div>
-        <div class="row" style="gap:8px;">
-          <div>
-            <input id="zoneRadiusInput" type="number" min="1" value="50" style="width:90px;padding-inline:10px;">
-            <span class="small muted">m</span>
-          </div>
-          <div class="small muted">Radius for selected zone</div>
-        </div>
+        <div class="small muted">Displayed radius for all zones: <b>50 m</b></div>
       </div>
 
       <div class="card">
@@ -885,7 +879,8 @@ body.dark .home-avatar{
   <div class="dialog">
     <h3 style="margin:0 0 6px 0">Add Zone Radius 🔵</h3>
     <p class="muted small" style="margin:0 0 10px 0">
-      Choose a zone and radius. After Continue, click on the map to set the zone centre.
+      Choose a zone. After Continue, click on the map to set the zone centre.
+      Radius is fixed at 50 m.
     </p>
 
     <label class="small muted">Zone ID</label>
@@ -895,8 +890,7 @@ body.dark .home-avatar{
       <option value="Zone C">Zone C</option>
     </select>
 
-    <label class="small muted">Radius (m)</label>
-    <input id="z_radius" type="number" min="1" value="50" style="width:100%;">
+    <div class="small muted">Radius: <b>50 m</b> (fixed)</div>
 
     <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:14px;">
       <button id="z_cancel" class="ghost">Cancel</button>
@@ -1025,7 +1019,7 @@ let detailBeacon = null;
 /* 🔵 Zone coverage state */
 const zoneCenters = { "Zone A": null, "Zone B": null, "Zone C": null };
 const zoneCircles = { "Zone A": null, "Zone B": null, "Zone C": null };
-const zoneRadii = { "Zone A": 50, "Zone B": 50, "Zone C": 50 }; // default 50m
+const zoneRadii = { "Zone A": 50, "Zone B": 50, "Zone C": 50 }; // fixed 50m
 let zonePlacementMode = false;
 let zonePlacementTarget = null;
 
@@ -1092,7 +1086,6 @@ function bearingBetween(aLat,aLng,bLat,bLng){
 
 /* ---------- Zone coverage helpers ---------- */
 const zoneRadiusSelect = () => document.getElementById("zoneRadiusSelect");
-const zoneRadiusInput = () => document.getElementById("zoneRadiusInput");
 
 function updateZoneCircleVisibilityBasedOnFilter(){
   const zones = ["Zone A","Zone B","Zone C"];
@@ -1101,8 +1094,8 @@ function updateZoneCircleVisibilityBasedOnFilter(){
     if(!circle) return;
 
     if(!zoneFilter){
-      // All zones → hide all circles
-      if(map.hasLayer(circle)) map.removeLayer(circle);
+      // All zones → show all circles that have centres
+      if(!map.hasLayer(circle)) circle.addTo(map);
     }else if(zoneFilter === zone){
       // Show only selected zone
       if(!map.hasLayer(circle)) circle.addTo(map);
@@ -1114,7 +1107,7 @@ function updateZoneCircleVisibilityBasedOnFilter(){
 
 function updateZoneCircle(zoneId){
   const center = zoneCenters[zoneId];
-  const radiusMeters = Math.max(1, parseFloat(zoneRadii[zoneId] ?? 50));
+  const radiusMeters = 50; // fixed radius
 
   if(!center){
     if(zoneCircles[zoneId]){
@@ -1142,11 +1135,7 @@ function updateZoneCircle(zoneId){
 }
 
 function syncZoneUIFromState(){
-  const zSel = zoneRadiusSelect();
-  const rIn = zoneRadiusInput();
-  if(!zSel || !rIn) return;
-  const z = zSel.value;
-  rIn.value = zoneRadii[z] ?? 50;
+  // For future use if needed – currently just keeps visibility in sync
   updateZoneCircleVisibilityBasedOnFilter();
 }
 
@@ -1424,7 +1413,7 @@ async function writeToFirebaseRec(payload){
 async function writeZoneToFirebase(zoneId){
   if(!firebaseDb) return;
   const center = zoneCenters[zoneId];
-  const radius = zoneRadii[zoneId] ?? null;
+  const radius = 50;
   const enabled = !!center;
   const payload = {
     zoneId,
@@ -1498,8 +1487,8 @@ document.getElementById("z_cancel").onclick =
   () => { zoneModal.style.display = "none"; };
 document.getElementById("z_continue").onclick = () => {
   const z = document.getElementById("z_zone").value.trim();
-  const radius = Math.max(1, parseFloat(document.getElementById("z_radius").value) || 50);
-  zoneRadii[z] = radius;
+  // radius fixed 50
+  zoneRadii[z] = 50;
 
   const zSel = zoneRadiusSelect();
   if(zSel) zSel.value = z;
@@ -1545,19 +1534,10 @@ document.querySelectorAll(".level-card").forEach(btn=>{
 /* ---------- Zone UI listeners ---------- */
 document.addEventListener("DOMContentLoaded", () => {
   const zSel = zoneRadiusSelect();
-  const rIn = zoneRadiusInput();
 
   if(zSel){
     zSel.addEventListener("change", () => {
       syncZoneUIFromState();
-    });
-  }
-  if(rIn){
-    rIn.addEventListener("change", () => {
-      const z = zoneRadiusSelect().value;
-      zoneRadii[z] = Math.max(1, parseFloat(rIn.value) || 50);
-      updateZoneCircle(z);
-      writeZoneToFirebase(z);
     });
   }
 
@@ -1853,9 +1833,7 @@ darkToggle.onchange = () => {
         if(z.centerLat != null && z.centerLng != null){
           zoneCenters[zid] = [z.centerLat, z.centerLng];
         }
-        if(z.radiusMeters != null){
-          zoneRadii[zid] = z.radiusMeters;
-        }
+        // radiusMeters is ignored for now; radius fixed at 50
       });
       syncZoneUIFromState();
       ["Zone A","Zone B","Zone C"].forEach(updateZoneCircle);
