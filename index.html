@@ -292,7 +292,7 @@ body.dark .progress-bar{
 }
 .quick-filters{
   display:grid;
-  grid-template-columns:repeat(4,1fr);
+  grid-template-columns:repeat(auto-fit,minmax(70px,1fr));
   gap:8px;
   margin-top:8px;
 }
@@ -628,9 +628,9 @@ body.dark .home-avatar{
   <h1>Terminal Map</h1>
   <input id="search" placeholder="Search beacon…" />
 
+  <!-- zone filter built dynamically -->
   <select id="zoneFilter">
     <option value="">All zones</option>
-    <option>Zone A</option><option>Zone B</option><option>Zone C</option>
   </select>
 
   <button id="levelBtn" class="ghost">Levels</button>
@@ -704,12 +704,10 @@ body.dark .home-avatar{
           <span class="pill" id="activeZonePill">All zones</span>
         </div>
         <div class="small muted" id="activeModeLabel" style="margin-top:4px;">Showing: Beacons</div>
-        <div class="quick-filters" style="margin-top:10px">
-          <button data-zone="" class="zf active">All</button>
-          <button data-zone="Zone A" class="zf">Zone A</button>
-          <button data-zone="Zone B" class="zf">Zone B</button>
-          <button data-zone="Zone C" class="zf">Zone C</button>
-        </div>
+
+        <!-- dynamic quick filters -->
+        <div class="quick-filters" id="quickFilters"></div>
+
         <div style="margin-top:12px" id="zoneProgress"></div>
         <div class="small muted" style="margin-top:6px">Overview shows count share by zone (relative to max zone count).</div>
 
@@ -717,14 +715,12 @@ body.dark .home-avatar{
         <hr>
         <div class="small muted" style="margin-bottom:4px;">Zone coverage (blue radius, fixed 50 m)</div>
         <div class="row" style="gap:8px;margin-bottom:4px;">
-          <select id="zoneRadiusSelect" style="flex:1;min-width:0;">
-            <option value="Zone A">Zone A</option>
-            <option value="Zone B">Zone B</option>
-            <option value="Zone C">Zone C</option>
+          <select id="zoneCenterSelect" style="flex:1;min-width:0;">
+            <option value="">Select zone</option>
           </select>
           <button id="zoneCenterBtn" class="ghost small" style="white-space:nowrap;">Set zone centre on map</button>
         </div>
-        <div class="small muted">Displayed radius for all zones: <b>50 m</b></div>
+        <div class="small muted">Radius is fixed at <b>50 m</b> for all zones.</div>
       </div>
 
       <div class="card">
@@ -857,12 +853,7 @@ body.dark .home-avatar{
     <p class="muted" style="margin:0 0 10px 0">Select Zone ID and enter Trolley ID. After Continue, click on the map to place the beacon.</p>
 
     <label class="small muted">Zone ID</label>
-    <select id="m_zoneId" style="width:100%;margin-bottom:10px;">
-      <option value="">Select a Zone</option>
-      <option value="Zone A">Zone A</option>
-      <option value="Zone B">Zone B</option>
-      <option value="Zone C">Zone C</option>
-    </select>
+    <input id="m_zoneId" placeholder="e.g. T1-ZONE-A" style="width:100%;margin-bottom:10px;">
 
     <label class="small muted">Trolley ID</label>
     <input id="m_trolleyId" placeholder="e.g. T-TEST-002" style="width:100%;">
@@ -879,16 +870,12 @@ body.dark .home-avatar{
   <div class="dialog">
     <h3 style="margin:0 0 6px 0">Add Zone Radius 🔵</h3>
     <p class="muted small" style="margin:0 0 10px 0">
-      Choose a zone. After Continue, click on the map to set the zone centre.
+      Enter a zone ID (e.g. T1-ZONE-A). After Continue, click on the map to set the zone centre.
       Radius is fixed at 50 m.
     </p>
 
     <label class="small muted">Zone ID</label>
-    <select id="z_zone" style="width:100%;margin-bottom:10px;">
-      <option value="Zone A">Zone A</option>
-      <option value="Zone B">Zone B</option>
-      <option value="Zone C">Zone C</option>
-    </select>
+    <input id="z_zoneName" placeholder="e.g. T1-ZONE-A" style="width:100%;margin-bottom:10px;">
 
     <div class="small muted">Radius: <b>50 m</b> (fixed)</div>
 
@@ -979,6 +966,7 @@ body.dark .home-avatar{
 const API_URL = "/api/beacons";
 const ENABLE_POST = false;
 const AUTO_REFRESH_MS = 10000;
+const FIXED_ZONE_RADIUS = 50; // 50 metres
 
 /* ---------- uibuilder ---------- */
 let ui = null;
@@ -1016,10 +1004,9 @@ let selectedId = null;
 let selectedBeacon = null;
 let detailBeacon = null;
 
-/* 🔵 Zone coverage state */
-const zoneCenters = { "Zone A": null, "Zone B": null, "Zone C": null };
-const zoneCircles = { "Zone A": null, "Zone B": null, "Zone C": null };
-const zoneRadii = { "Zone A": 50, "Zone B": 50, "Zone C": 50 }; // fixed 50m
+/* 🔵 Zone coverage state (dynamic zones) */
+let zoneCenters = {};       // { zoneId: [lat,lng] }
+let zoneCircles = {};       // { zoneId: L.circle }
 let zonePlacementMode = false;
 let zonePlacementTarget = null;
 
@@ -1030,28 +1017,15 @@ let userMarker = null;
 let targetLatLng = null;
 let orientationHandler = null;
 
-/* ---------- Page switching ---------- */
-function setActivePage(page){
-  document.querySelectorAll(".page").forEach(p=>{
-    p.classList.toggle("active", p.id === "page-" + page);
-  });
-  document.querySelectorAll("#bottomNav .nav-btn").forEach(btn=>{
-    btn.classList.toggle("active", btn.dataset.page === page);
-  });
-  if(page === "map"){
-    setTimeout(()=>{ map.invalidateSize(); }, 200);
-  }
-}
-
 /* ---------- Helpers ---------- */
-function zoneMatches(b){
-  if(!zoneFilter) return true;
-  return String(b.zone||"").toLowerCase() === zoneFilter.toLowerCase();
-}
 function escapeH(s){
   return String(s ?? "").replace(/[&<>"']/g, m => ({
     "&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"
   }[m] || ""));
+}
+function zoneMatches(b){
+  if(!zoneFilter) return true;
+  return String(b.zone||"").toLowerCase() === zoneFilter.toLowerCase();
 }
 function popupHtml(b){
   return `<b>${escapeH(b.name)}</b> <span class="pill">${escapeH(b.zone)}</span><br><small>ID:${escapeH(b.id)}</small>`;
@@ -1084,34 +1058,97 @@ function bearingBetween(aLat,aLng,bLat,bLng){
   return (toDeg(Math.atan2(y,x)) + 360) % 360;
 }
 
-/* ---------- Zone coverage helpers ---------- */
-const zoneRadiusSelect = () => document.getElementById("zoneRadiusSelect");
+/* ---------- Page switching ---------- */
+function setActivePage(page){
+  document.querySelectorAll(".page").forEach(p=>{
+    p.classList.toggle("active", p.id === "page-" + page);
+  });
+  document.querySelectorAll("#bottomNav .nav-btn").forEach(btn=>{
+    btn.classList.toggle("active", btn.dataset.page === page);
+  });
+  if(page === "map"){
+    setTimeout(()=>{ map.invalidateSize(); }, 200);
+  }
+}
 
+/* ---------- Zone helpers (dynamic) ---------- */
+function getKnownZones(){
+  const s = new Set();
+  beacons.forEach(b => { if (b.zone) s.add(b.zone); });
+  Object.keys(zoneCenters).forEach(z => { if (z) s.add(z); });
+  return Array.from(s).sort((a,b)=>a.localeCompare(b));
+}
+
+function refreshZoneLists(){
+  const zones = getKnownZones();
+
+  // zoneFilter <select>
+  const zFilter = document.getElementById("zoneFilter");
+  const prevFilter = zoneFilter || "";
+  zFilter.innerHTML = '<option value="">All zones</option>' +
+    zones.map(z => `<option value="${escapeH(z)}">${escapeH(z)}</option>`).join("");
+  if(prevFilter && zones.includes(prevFilter)){
+    zFilter.value = prevFilter;
+  }else{
+    if(prevFilter) zoneFilter = "";
+    zFilter.value = "";
+  }
+
+  // quick filters
+  const quick = document.getElementById("quickFilters");
+  if(quick){
+    quick.innerHTML = "";
+    const makeBtn = (label, value) => {
+      const b = document.createElement("button");
+      b.className = "zf" + ((value === zoneFilter) ? " active" : "");
+      b.dataset.zone = value;
+      b.textContent = label;
+      return b;
+    };
+    quick.appendChild(makeBtn("All", ""));
+    zones.forEach(z=>{
+      quick.appendChild(makeBtn(z, z));
+    });
+  }
+
+  // zoneCenterSelect
+  const centerSel = document.getElementById("zoneCenterSelect");
+  if(centerSel){
+    const prevC = centerSel.value;
+    centerSel.innerHTML = '<option value="">Select zone</option>' +
+      zones.map(z => `<option value="${escapeH(z)}">${escapeH(z)}</option>`).join("");
+    if(prevC && zones.includes(prevC)) centerSel.value = prevC;
+  }
+
+  // update labels
+  document.getElementById("activeZonePill").textContent =
+    zoneFilter || "All zones";
+  document.getElementById("overviewZoneLine").textContent =
+    zoneFilter ? `Zone: ${zoneFilter}` : "All zones";
+}
+
+/* show/hide circles based on current filter */
 function updateZoneCircleVisibilityBasedOnFilter(){
-  const zones = ["Zone A","Zone B","Zone C"];
-  zones.forEach(zone => {
-    const circle = zoneCircles[zone];
-    if(!circle) return;
-
+  for(const [zoneId, circle] of Object.entries(zoneCircles)){
+    if(!circle) continue;
     if(!zoneFilter){
-      // All zones → show all circles that have centres
+      // all zones -> show all with centres
       if(!map.hasLayer(circle)) circle.addTo(map);
-    }else if(zoneFilter === zone){
-      // Show only selected zone
+    }else if(zoneFilter === zoneId){
       if(!map.hasLayer(circle)) circle.addTo(map);
     }else{
       if(map.hasLayer(circle)) map.removeLayer(circle);
     }
-  });
+  }
 }
 
 function updateZoneCircle(zoneId){
   const center = zoneCenters[zoneId];
-  const radiusMeters = 50; // fixed radius
+  const radiusMeters = FIXED_ZONE_RADIUS;
 
   if(!center){
     if(zoneCircles[zoneId]){
-      map.removeLayer(zoneCircles[zoneId]);
+      if(map.hasLayer(zoneCircles[zoneId])) map.removeLayer(zoneCircles[zoneId]);
       zoneCircles[zoneId] = null;
     }
     updateZoneCircleVisibilityBasedOnFilter();
@@ -1131,11 +1168,6 @@ function updateZoneCircle(zoneId){
     zoneCircles[zoneId].setRadius(radiusMeters);
   }
 
-  updateZoneCircleVisibilityBasedOnFilter();
-}
-
-function syncZoneUIFromState(){
-  // For future use if needed – currently just keeps visibility in sync
   updateZoneCircleVisibilityBasedOnFilter();
 }
 
@@ -1223,18 +1255,24 @@ function renderStats(){
   const total = beacons.filter(zoneMatches).length;
   document.getElementById("totalCount").textContent = total;
 
-  const counts = {"Zone A":0,"Zone B":0,"Zone C":0};
-  beacons.forEach(b => {
-    if (counts[b.zone] !== undefined) counts[b.zone]++;
+  const counts = {};
+  getKnownZones().forEach(z=>counts[z]=0);
+  beacons.forEach(b=>{
+    if(b.zone){
+      if(counts[b.zone] == null) counts[b.zone] = 0;
+      counts[b.zone]++;
+    }
   });
-  const max = Math.max(1, ...Object.values(counts));
+  const values = Object.values(counts);
+  const max = values.length ? Math.max(1, ...values) : 1;
+
   const zEl = document.getElementById("zoneProgress");
   zEl.innerHTML = "";
   Object.entries(counts).forEach(([label,val])=>{
     const row = document.createElement("div");
     row.className = "progress-row";
     row.innerHTML =
-      `<div class="progress-label">${label}</div>
+      `<div class="progress-label">${escapeH(label)}</div>
        <div class="progress-bar">
          <div class="progress-fill" style="width:${(val/max)*100}%"></div>
        </div>
@@ -1272,15 +1310,14 @@ function renderMarkers(){
 
   updateZoneCircleVisibilityBasedOnFilter();
 }
+
 function renderOverview(){
   const listEl = document.getElementById("overviewList");
   const emptyEl = document.getElementById("overviewEmpty");
-  const zoneLine = document.getElementById("overviewZoneLine");
   listEl.innerHTML = "";
   const filtered = beacons
     .filter(fits)
     .sort((a,b)=>String(a.name).localeCompare(String(b.name)));
-  zoneLine.textContent = zoneFilter ? `Zone: ${zoneFilter}` : "All zones";
   document.getElementById("overviewCount").textContent =
     `${filtered.length} shown`;
 
@@ -1357,6 +1394,7 @@ function renderHome(){
 }
 
 function render(){
+  refreshZoneLists();
   renderMarkers();
   renderOverview();
   renderStats();
@@ -1412,15 +1450,13 @@ async function writeToFirebaseRec(payload){
 
 async function writeZoneToFirebase(zoneId){
   if(!firebaseDb) return;
-  const center = zoneCenters[zoneId];
-  const radius = 50;
-  const enabled = !!center;
+  const center = zoneCenters[zoneId] || null;
   const payload = {
     zoneId,
     centerLat: center ? center[0] : null,
     centerLng: center ? center[1] : null,
-    radiusMeters: radius,
-    enabled
+    radiusMeters: FIXED_ZONE_RADIUS,
+    enabled: !!center
   };
   try{
     await firebaseDb.ref(`/Zones/${zoneId}`).set(payload);
@@ -1446,16 +1482,12 @@ document.getElementById("bottomNav").addEventListener("click", e=>{
   setActivePage(btn.dataset.page);
 });
 
-document.querySelectorAll(".quick-filters").forEach(group=>{
-  group.addEventListener("click",e=>{
-    const btn = e.target.closest(".zf");
-    if(!btn) return;
-    document.querySelectorAll(".zf").forEach(b=>b.classList.remove("active"));
-    btn.classList.add("active");
-    zoneFilter = btn.dataset.zone || "";
-    document.getElementById("zoneFilter").value = zoneFilter;
-    render();
-  });
+/* quick filters (event delegation) */
+document.getElementById("quickFilters").addEventListener("click", e=>{
+  const btn = e.target.closest(".zf");
+  if(!btn) return;
+  zoneFilter = btn.dataset.zone || "";
+  render();
 });
 
 /* Add beacon modal */
@@ -1470,13 +1502,17 @@ document.getElementById("m_continue").onclick = () => {
   const zoneId = document.getElementById("m_zoneId").value.trim();
   const trolleyId = document.getElementById("m_trolleyId").value.trim();
   if(!zoneId || !trolleyId){
-    toast("Please select Zone ID and enter Trolley ID");
+    toast("Please enter Zone ID and Trolley ID");
     return;
   }
   modal.style.display = "none";
   placementMode = true;
   pendingBeacon = { zoneId, trolleyId };
   banner.style.display = "block";
+
+  // ensure this zone exists in zone list
+  if(!zoneCenters[zoneId]) zoneCenters[zoneId] = null;
+  render();
 };
 
 /* Add zone modal */
@@ -1486,13 +1522,14 @@ document.getElementById("addZoneBtn").onclick =
 document.getElementById("z_cancel").onclick =
   () => { zoneModal.style.display = "none"; };
 document.getElementById("z_continue").onclick = () => {
-  const z = document.getElementById("z_zone").value.trim();
-  // radius fixed 50
-  zoneRadii[z] = 50;
+  const z = document.getElementById("z_zoneName").value.trim();
+  if(!z){
+    toast("Please enter a zone ID");
+    return;
+  }
 
-  const zSel = zoneRadiusSelect();
-  if(zSel) zSel.value = z;
-  syncZoneUIFromState();
+  if(zoneCenters[z] === undefined) zoneCenters[z] = null;
+  refreshZoneLists();
 
   zoneModal.style.display = "none";
   setActivePage("map");
@@ -1531,30 +1568,20 @@ document.querySelectorAll(".level-card").forEach(btn=>{
   };
 });
 
-/* ---------- Zone UI listeners ---------- */
-document.addEventListener("DOMContentLoaded", () => {
-  const zSel = zoneRadiusSelect();
-
-  if(zSel){
-    zSel.addEventListener("change", () => {
-      syncZoneUIFromState();
-    });
+/* Zone centre button */
+document.getElementById("zoneCenterBtn").onclick = () => {
+  const sel = document.getElementById("zoneCenterSelect");
+  const z = sel.value.trim();
+  if(!z){
+    toast("Select a zone first");
+    return;
   }
-
-  const zBtn = document.getElementById("zoneCenterBtn");
-  if(zBtn){
-    zBtn.addEventListener("click", () => {
-      const zSel2 = zoneRadiusSelect();
-      if(!zSel2) return;
-      zonePlacementTarget = zSel2.value;
-      zonePlacementMode = true;
-      zoneBanner.style.display = "block";
-      toast(`Click on the map to set "${zonePlacementTarget}" centre`);
-    });
-  }
-
-  syncZoneUIFromState();
-});
+  if(zoneCenters[z] === undefined) zoneCenters[z] = null;
+  zonePlacementTarget = z;
+  zonePlacementMode = true;
+  zoneBanner.style.display = "block";
+  toast(`Click on the map to set "${z}" centre`);
+};
 
 /* ---------- Map click: zone centre OR place beacon ---------- */
 map.on("click",async e=>{
@@ -1568,6 +1595,7 @@ map.on("click",async e=>{
 
     updateZoneCircle(zonePlacementTarget);
     writeZoneToFirebase(zonePlacementTarget);
+    render();
     return;
   }
 
@@ -1827,16 +1855,18 @@ darkToggle.onchange = () => {
     const zref = firebaseDb.ref("/Zones");
     zref.on("value",(snap)=>{
       const data = snap.val() || {};
-      ["Zone A","Zone B","Zone C"].forEach(zid=>{
-        const z = data[zid];
-        if(!z) return;
-        if(z.centerLat != null && z.centerLng != null){
-          zoneCenters[zid] = [z.centerLat, z.centerLng];
+      zoneCenters = {};
+      zoneCircles = {};
+      for(const zoneId in data){
+        const z = data[zoneId];
+        if(z && z.centerLat != null && z.centerLng != null){
+          zoneCenters[zoneId] = [z.centerLat, z.centerLng];
+          updateZoneCircle(zoneId);
+        }else{
+          zoneCenters[zoneId] = null;
         }
-        // radiusMeters is ignored for now; radius fixed at 50
-      });
-      syncZoneUIFromState();
-      ["Zone A","Zone B","Zone C"].forEach(updateZoneCircle);
+      }
+      render();
     });
 
   }catch(e){
