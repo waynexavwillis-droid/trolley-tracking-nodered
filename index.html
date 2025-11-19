@@ -638,6 +638,7 @@ body.dark .home-avatar{
 </header>
 
 <div class="banner" id="placementBanner">Placement mode – click on map to place new beacon • Esc to cancel</div>
+<div class="banner" id="zonePlacementBanner" style="top:100px;">Zone centre mode – click on map to set zone centre • Esc to cancel</div>
 
 <!-- ---------- HOME PAGE ---------- -->
 <div id="page-home" class="page active">
@@ -712,6 +713,28 @@ body.dark .home-avatar{
         </div>
         <div style="margin-top:12px" id="zoneProgress"></div>
         <div class="small muted" style="margin-top:6px">Overview shows count share by zone (relative to max zone count).</div>
+
+        <!-- 🔵 Zone coverage controls -->
+        <hr>
+        <div class="small muted" style="margin-bottom:4px;">Zone coverage (blue circle)</div>
+        <div class="row" style="gap:8px;margin-bottom:6px;">
+          <select id="zoneRadiusSelect" style="flex:1;min-width:0;">
+            <option value="Zone A">Zone A</option>
+            <option value="Zone B">Zone B</option>
+            <option value="Zone C">Zone C</option>
+          </select>
+          <button id="zoneCenterBtn" class="ghost small" style="white-space:nowrap;">Set zone centre on map</button>
+        </div>
+        <div class="row" style="gap:8px;">
+          <div>
+            <input id="zoneRadiusInput" type="number" min="1" value="30" style="width:90px;padding-inline:10px;">
+            <span class="small muted">m</span>
+          </div>
+          <label class="small" style="display:flex;align-items:center;gap:6px;">
+            <input type="checkbox" id="zoneRadiusToggle" style="width:auto;">
+            Show zone circle
+          </label>
+        </div>
       </div>
 
       <div class="card">
@@ -977,6 +1000,20 @@ let selectedId = null;
 let selectedBeacon = null;
 let detailBeacon = null;
 
+/* 🔵 Zone coverage state (per zone) */
+const zoneCenters = {
+  "Zone A": null,
+  "Zone B": null,
+  "Zone C": null
+};
+const zoneCircles = {
+  "Zone A": null,
+  "Zone B": null,
+  "Zone C": null
+};
+let zonePlacementMode = false;
+let zonePlacementTarget = null;
+
 /* Finder state */
 let watchId = null;
 let headingDeg = null;
@@ -1038,6 +1075,50 @@ function bearingBetween(aLat,aLng,bLat,bLng){
   return (toDeg(Math.atan2(y,x)) + 360) % 360;
 }
 
+/* ---------- Zone coverage helpers ---------- */
+const zoneRadiusSelect = () => document.getElementById("zoneRadiusSelect");
+const zoneRadiusInput = () => document.getElementById("zoneRadiusInput");
+const zoneRadiusToggle = () => document.getElementById("zoneRadiusToggle");
+
+function updateZoneCircle(zoneId){
+  const center = zoneCenters[zoneId];
+  const radiusEl = zoneRadiusInput();
+  const toggleEl = zoneRadiusToggle();
+  if(!radiusEl || !toggleEl) return;
+
+  const show = toggleEl.checked;
+
+  if(!show){
+    if(zoneCircles[zoneId]){
+      map.removeLayer(zoneCircles[zoneId]);
+      zoneCircles[zoneId] = null;
+    }
+    return;
+  }
+
+  if(!center){
+    toast("Set zone centre on the map first.");
+    toggleEl.checked = false;
+    return;
+  }
+
+  const radiusMeters = Math.max(1, parseFloat(radiusEl.value) || 30);
+
+  if(!zoneCircles[zoneId]){
+    zoneCircles[zoneId] = L.circle(center, {
+      radius: radiusMeters,
+      color: "#3b82f6",
+      weight: 2,
+      fillColor: "#3b82f6",
+      fillOpacity: 0.15
+    }).addTo(map);
+  }else{
+    zoneCircles[zoneId].setLatLng(center);
+    zoneCircles[zoneId].setRadius(radiusMeters);
+    if(!map.hasLayer(zoneCircles[zoneId])) zoneCircles[zoneId].addTo(map);
+  }
+}
+
 /* ---------- Map details ---------- */
 function showDetails(b){
   selectedId = b.id;
@@ -1087,6 +1168,37 @@ document.getElementById("detailFind").onclick = () => {
     }
   }, 350);
 };
+
+/* Attach listeners for zone coverage UI */
+document.addEventListener("DOMContentLoaded", () => {
+  const rIn = zoneRadiusInput();
+  const rTg = zoneRadiusToggle();
+  if(rIn){
+    rIn.addEventListener("change", () => {
+      const zSel = zoneRadiusSelect();
+      if(!zSel) return;
+      updateZoneCircle(zSel.value);
+    });
+  }
+  if(rTg){
+    rTg.addEventListener("change", () => {
+      const zSel = zoneRadiusSelect();
+      if(!zSel) return;
+      updateZoneCircle(zSel.value);
+    });
+  }
+  const zBtn = document.getElementById("zoneCenterBtn");
+  if(zBtn){
+    zBtn.addEventListener("click", () => {
+      const zSel = zoneRadiusSelect();
+      if(!zSel) return;
+      zonePlacementTarget = zSel.value;
+      zonePlacementMode = true;
+      document.getElementById("zonePlacementBanner").style.display = "block";
+      toast(`Click on the map to set "${zonePlacementTarget}" centre`);
+    });
+  }
+});
 
 /* ---------- Delete (Firebase) ---------- */
 const confirmBox = document.getElementById("confirm");
@@ -1168,6 +1280,11 @@ function renderMarkers(){
       .bindPopup(popupHtml(b));
     idToMarker.set(b.id,m);
     clusters.addLayer(m);
+  });
+
+  // keep zone circles on top after re-render
+  Object.entries(zoneCircles).forEach(([zoneId,circle])=>{
+    if(circle && !map.hasLayer(circle)) circle.addTo(map);
   });
 }
 function renderOverview(){
@@ -1311,6 +1428,7 @@ document.querySelectorAll(".quick-filters").forEach(group=>{
 /* Add beacon modal */
 const modal = document.getElementById("modalBackdrop");
 const banner = document.getElementById("placementBanner");
+const zoneBanner = document.getElementById("zonePlacementBanner");
 document.getElementById("addBtn").onclick =
   () => { modal.style.display = "flex"; };
 document.getElementById("m_cancel").onclick =
@@ -1332,6 +1450,9 @@ window.onkeydown = e => {
     placementMode = false;
     pendingBeacon = null;
     banner.style.display = "none";
+    zonePlacementMode = false;
+    zonePlacementTarget = null;
+    zoneBanner.style.display = "none";
     modal.style.display = "none";
     document.getElementById("levelModal").style.display = "none";
   }
@@ -1424,8 +1545,25 @@ async function writeToFirebaseRec(payload){
   }
 }
 
-/* ---------- Map click → place & save ---------- */
+/* ---------- Map click → zone centre OR place beacon ---------- */
 map.on("click",async e=>{
+  /* Zone centre placement takes priority */
+  if(zonePlacementMode && zonePlacementTarget){
+    const center = [e.latlng.lat, e.latlng.lng];
+    zoneCenters[zonePlacementTarget] = center;
+    toast(`Zone centre set for ${zonePlacementTarget}`);
+    zonePlacementMode = false;
+    zonePlacementTarget = null;
+    zoneBanner.style.display = "none";
+
+    // if toggle is on and this zone is selected, update circle
+    const sel = zoneRadiusSelect();
+    if(sel && sel.value){
+      updateZoneCircle(sel.value);
+    }
+    return;
+  }
+
   if(!placementMode || !pendingBeacon) return;
   placementMode = false;
   banner.style.display = "none";
