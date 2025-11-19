@@ -1,3 +1,11 @@
+Here’s your code with a **bottom navigation bar** like the screenshot, with:
+
+* **Trolley page** → trolley icon, mapped to `viewMode = "beacon"`
+* **Gateway page** → Wi-Fi icon, mapped to `viewMode = "gateway"`
+* The old `<select id="viewMode">` is now **hidden** but still kept so all functions continue working.
+* Tapping the bottom buttons switches page and updates the filters/stats just like before.
+
+```html
 <!doctype html>
 <html lang="en">
 <head>
@@ -93,6 +101,11 @@ button.danger{
 button:disabled{opacity:.6;cursor:not-allowed}
 .small{font-size:12px}
 .muted{color:var(--muted)}
+
+/* hide old dropdown, we now use bottom nav */
+#viewMode{
+  display:none;
+}
 
 /* layout */
 main{
@@ -321,6 +334,45 @@ hr{border:none;border-top:1px solid var(--border);margin:10px 0}
   color:var(--muted);
 }
 
+/* ---------- Bottom navigation (Trolley / Gateway) ---------- */
+.bottom-nav{
+  position:fixed;
+  left:50%;
+  bottom:18px;
+  transform:translateX(-50%);
+  background:#020617;
+  border-radius:999px;
+  padding:6px;
+  display:flex;
+  gap:6px;
+  box-shadow:0 22px 45px rgba(15,23,42,.5);
+  z-index:1300;
+}
+.nav-btn{
+  border:none;
+  background:transparent;
+  color:#9ca3af;
+  border-radius:999px;
+  padding:8px 14px;
+  display:flex;
+  align-items:center;
+  gap:6px;
+  font-size:13px;
+  cursor:pointer;
+  min-width:110px;
+}
+.nav-btn span.icon{
+  font-size:16px;
+}
+.nav-btn.active{
+  background:#f9fafb;
+  color:#020617;
+}
+.nav-btn.active .icon{
+  /* small highlight */
+}
+
+/* mobile layout */
 @media(max-width:980px){
   main{
     grid-template-columns:1fr;
@@ -335,7 +387,7 @@ hr{border:none;border-top:1px solid var(--border);margin:10px 0}
   <h1>Terminal Map</h1>
   <input id="search" placeholder="Search beacon…" />
 
-  <!-- View mode selector -->
+  <!-- View mode selector (kept for logic, hidden by CSS) -->
   <select id="viewMode">
     <option value="beacon">Beacons</option>
     <option value="gateway">Gateways</option>
@@ -420,6 +472,18 @@ hr{border:none;border-top:1px solid var(--border);margin:10px 0}
   </aside>
 </main>
 
+<!-- NEW: Bottom navigation (Trolley / Gateway) -->
+<div class="bottom-nav" id="bottomNav">
+  <button class="nav-btn active" data-mode="beacon">
+    <span class="icon">🛒</span>
+    <span>Trolley</span>
+  </button>
+  <button class="nav-btn" data-mode="gateway">
+    <span class="icon">📶</span>
+    <span>Gateway</span>
+  </button>
+</div>
+
 <!-- Add Beacon Modal -->
 <div id="modalBackdrop" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:1000;align-items:center;justify-content:center;">
   <div class="dialog">
@@ -466,8 +530,8 @@ hr{border:none;border-top:1px solid var(--border);margin:10px 0}
       </button>
       <button class="level-card" data-level="L3">
         <div class="level-tag">L3</div>
-        <div class="level-title">Sky / Rooftop Level</div>
         <div class="level-sub">Marina Bay / CBD</div>
+        <div class="level-title">Sky / Rooftop Level</div>
       </button>
     </div>
 
@@ -591,11 +655,6 @@ function haversine(aLat,aLng,bLat,bLng){
 }
 function bearingBetween(aLat,aLng,bLat,bLng){
   const y = Math.sin(toRad(bLng-aLng))*Math.cos(toRad(bLat));
-  const x = Math.cos(toRad(aLat))*Math.sin(toRad(bLat)) - Math.sin(toRad(aLat))*Math.cos(toRad(blat))*Math.cos(toRad(bLng-aLng));
-}
-/* small typo fix: replace bLat variable name */
-function bearingBetween(aLat,aLng,bLat,bLng){
-  const y = Math.sin(toRad(bLng-aLng))*Math.cos(toRad(bLat));
   const x = Math.cos(toRad(aLat))*Math.sin(toRad(bLat)) - Math.sin(toRad(aLat))*Math.cos(toRad(bLat))*Math.cos(toRad(bLng-aLng));
   return (toDeg(Math.atan2(y,x)) + 360) % 360;
 }
@@ -690,6 +749,19 @@ function renderOverview(){
 }
 function render(){ renderMarkers(); renderOverview(); renderStats(); }
 
+/* helper to sync view mode + nav */
+function setViewMode(mode){
+  viewMode = mode;
+  // sync hidden select
+  const sel = document.getElementById("viewMode");
+  if (sel && sel.value !== mode) sel.value = mode;
+  // sync bottom nav
+  document.querySelectorAll("#bottomNav .nav-btn").forEach(btn => {
+    btn.classList.toggle("active", btn.dataset.mode === mode);
+  });
+  render();
+}
+
 /* ---------- Initial / fallback data ---------- */
 async function fetchBeacons(){
   try{ const r = await fetch(API_URL); if(!r.ok) throw 0; const j = await r.json(); return Array.isArray(j)?j:[]; }catch{ return []; }
@@ -708,10 +780,18 @@ document.getElementById("search").oninput = e=>{ searchText = e.target.value.tri
 document.getElementById("zoneFilter").onchange = e=>{ zoneFilter = e.target.value.trim(); render(); };
 document.getElementById("refresh").onclick = refresh;
 
+/* keep old handler but route through setViewMode */
 document.getElementById("viewMode").onchange = e=>{
-  viewMode = e.target.value;
-  render();
+  setViewMode(e.target.value);
 };
+
+/* bottom nav click → change mode */
+document.getElementById("bottomNav").addEventListener("click", (e) => {
+  const btn = e.target.closest(".nav-btn");
+  if (!btn) return;
+  const mode = btn.dataset.mode;    // "beacon" or "gateway"
+  setViewMode(mode);
+});
 
 document.querySelectorAll(".quick-filters").forEach(group=>{
   group.addEventListener("click",e=>{ const btn = e.target.closest(".zf"); if(!btn) return; zoneFilter = btn.dataset.zone || ""; document.getElementById("zoneFilter").value = zoneFilter; render(); });
@@ -907,3 +987,4 @@ setInterval(refresh, AUTO_REFRESH_MS);
 </script>
 </body>
 </html>
+```
