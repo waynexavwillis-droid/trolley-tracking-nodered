@@ -446,11 +446,37 @@ body.dark .bottom-nav .nav-btn.active{
   color:var(--muted);
   margin-top:4px;
 }
+
+/* new: hero banner like sushi card */
+.home-hero-banner{
+  display:flex;
+  align-items:center;
+  gap:16px;
+  margin-top:4px;
+}
+.hero-image{
+  width:96px;
+  height:96px;
+  border-radius:26px;
+  background:radial-gradient(circle at 20% 20%,#fef3c7,#fb7185 35%,#8b5cf6 80%);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  box-shadow:0 18px 40px rgba(148,163,184,.45);
+}
+.hero-image span{
+  font-size:42px;
+}
+.hero-text-block{
+  flex:1;
+}
+
+/* home stats cards */
 .home-stats-grid{
   display:grid;
   grid-template-columns:repeat(auto-fit,minmax(160px,1fr));
   gap:10px;
-  margin:12px 0 8px 0;
+  margin:14px 0 8px 0;
 }
 .home-stat-card{
   border-radius:20px;
@@ -485,10 +511,28 @@ body.dark .bottom-nav .nav-btn.active{
   cursor:pointer;
   display:flex;
   flex-direction:column;
-  gap:2px;
+  gap:4px;
 }
 body.dark #homeBeaconList .home-item{
   background:#050317;
+}
+
+/* avatar image for each trolley */
+.home-avatar{
+  width:40px;
+  height:40px;
+  border-radius:16px;
+  background:var(--accent-soft);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  box-shadow:0 10px 24px rgba(148,163,184,.35);
+}
+.home-avatar span{
+  font-size:22px;
+}
+body.dark .home-avatar{
+  background:#1e1638;
 }
 
 /* ---------- Detail page (food-cart style) ---------- */
@@ -598,12 +642,24 @@ body.dark #homeBeaconList .home-item{
 <!-- ---------- HOME PAGE ---------- -->
 <div id="page-home" class="page active">
   <div class="card">
-    <div class="row">
-      <div>
-        <div class="home-hero-title">Trolley overview</div>
-        <div class="home-hero-sub">Live summary of trolleys & zones</div>
-      </div>
+    <div class="row" style="margin-bottom:6px;">
+      <div class="home-hero-title">Trolley overview</div>
       <span class="pill">Live</span>
+    </div>
+
+    <div class="home-hero-banner">
+      <div class="hero-image">
+        <!-- trolley “picture” -->
+        <span>🛒</span>
+      </div>
+      <div class="hero-text-block">
+        <div class="home-hero-sub" style="font-size:14px;">
+          Live summary of trolleys & zones
+        </div>
+        <div class="small muted" style="margin-top:4px;">
+          Track every beacon in the terminal at a glance.
+        </div>
+      </div>
     </div>
 
     <div class="home-stats-grid">
@@ -1180,8 +1236,9 @@ function renderHome(){
     const div = document.createElement("div");
     div.className = "home-item";
     div.innerHTML =
-      `<div class="row" style="align-items:center;">
-         <div>
+      `<div class="row" style="align-items:center;gap:10px;">
+         <div class="home-avatar"><span>🛒</span></div>
+         <div style="flex:1;min-width:0;">
            <b>${escapeH(b.name || "Trolley")}</b>
            <div class="small muted">ID: ${escapeH(b.id || "-")}</div>
          </div>
