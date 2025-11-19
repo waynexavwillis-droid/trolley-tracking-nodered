@@ -726,13 +726,10 @@ body.dark .home-avatar{
         </div>
         <div class="row" style="gap:8px;">
           <div>
-            <input id="zoneRadiusInput" type="number" min="1" value="30" style="width:90px;padding-inline:10px;">
+            <input id="zoneRadiusInput" type="number" min="1" value="50" style="width:90px;padding-inline:10px;">
             <span class="small muted">m</span>
           </div>
-          <label class="small" style="display:flex;align-items:center;gap:6px;">
-            <input type="checkbox" id="zoneRadiusToggle" style="width:auto;">
-            Show zone circle
-          </label>
+          <div class="small muted">Radius for selected zone</div>
         </div>
       </div>
 
@@ -899,7 +896,7 @@ body.dark .home-avatar{
     </select>
 
     <label class="small muted">Radius (m)</label>
-    <input id="z_radius" type="number" min="1" value="30" style="width:100%;">
+    <input id="z_radius" type="number" min="1" value="50" style="width:100%;">
 
     <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:14px;">
       <button id="z_cancel" class="ghost">Cancel</button>
@@ -1025,11 +1022,10 @@ let selectedId = null;
 let selectedBeacon = null;
 let detailBeacon = null;
 
-/* 🔵 Zone coverage state (per zone) */
+/* 🔵 Zone coverage state */
 const zoneCenters = { "Zone A": null, "Zone B": null, "Zone C": null };
 const zoneCircles = { "Zone A": null, "Zone B": null, "Zone C": null };
-const zoneRadii = { "Zone A": 30, "Zone B": 30, "Zone C": 30 };
-const zoneEnabled = { "Zone A": false, "Zone B": false, "Zone C": false };
+const zoneRadii = { "Zone A": 50, "Zone B": 50, "Zone C": 50 }; // default 50m
 let zonePlacementMode = false;
 let zonePlacementTarget = null;
 
@@ -1097,18 +1093,35 @@ function bearingBetween(aLat,aLng,bLat,bLng){
 /* ---------- Zone coverage helpers ---------- */
 const zoneRadiusSelect = () => document.getElementById("zoneRadiusSelect");
 const zoneRadiusInput = () => document.getElementById("zoneRadiusInput");
-const zoneRadiusToggle = () => document.getElementById("zoneRadiusToggle");
+
+function updateZoneCircleVisibilityBasedOnFilter(){
+  const zones = ["Zone A","Zone B","Zone C"];
+  zones.forEach(zone => {
+    const circle = zoneCircles[zone];
+    if(!circle) return;
+
+    if(!zoneFilter){
+      // All zones → hide all circles
+      if(map.hasLayer(circle)) map.removeLayer(circle);
+    }else if(zoneFilter === zone){
+      // Show only selected zone
+      if(!map.hasLayer(circle)) circle.addTo(map);
+    }else{
+      if(map.hasLayer(circle)) map.removeLayer(circle);
+    }
+  });
+}
 
 function updateZoneCircle(zoneId){
   const center = zoneCenters[zoneId];
-  const enabled = !!zoneEnabled[zoneId];
-  const radiusMeters = Math.max(1, parseFloat(zoneRadii[zoneId] ?? 30));
+  const radiusMeters = Math.max(1, parseFloat(zoneRadii[zoneId] ?? 50));
 
-  if(!enabled || !center){
+  if(!center){
     if(zoneCircles[zoneId]){
       map.removeLayer(zoneCircles[zoneId]);
       zoneCircles[zoneId] = null;
     }
+    updateZoneCircleVisibilityBasedOnFilter();
     return;
   }
 
@@ -1123,19 +1136,18 @@ function updateZoneCircle(zoneId){
   }else{
     zoneCircles[zoneId].setLatLng(center);
     zoneCircles[zoneId].setRadius(radiusMeters);
-    if(!map.hasLayer(zoneCircles[zoneId])) zoneCircles[zoneId].addTo(map);
   }
+
+  updateZoneCircleVisibilityBasedOnFilter();
 }
 
 function syncZoneUIFromState(){
   const zSel = zoneRadiusSelect();
   const rIn = zoneRadiusInput();
-  const rTg = zoneRadiusToggle();
-  if(!zSel || !rIn || !rTg) return;
+  if(!zSel || !rIn) return;
   const z = zSel.value;
-  rIn.value = zoneRadii[z] ?? 30;
-  rTg.checked = !!zoneEnabled[z];
-  updateZoneCircle(z);
+  rIn.value = zoneRadii[z] ?? 50;
+  updateZoneCircleVisibilityBasedOnFilter();
 }
 
 /* ---------- Detail panel ---------- */
@@ -1268,9 +1280,8 @@ function renderMarkers(){
     idToMarker.set(b.id,m);
     clusters.addLayer(m);
   });
-  Object.values(zoneCircles).forEach(c=>{
-    if(c && !map.hasLayer(c)) c.addTo(map);
-  });
+
+  updateZoneCircleVisibilityBasedOnFilter();
 }
 function renderOverview(){
   const listEl = document.getElementById("overviewList");
@@ -1414,7 +1425,7 @@ async function writeZoneToFirebase(zoneId){
   if(!firebaseDb) return;
   const center = zoneCenters[zoneId];
   const radius = zoneRadii[zoneId] ?? null;
-  const enabled = !!zoneEnabled[zoneId];
+  const enabled = !!center;
   const payload = {
     zoneId,
     centerLat: center ? center[0] : null,
@@ -1450,6 +1461,8 @@ document.querySelectorAll(".quick-filters").forEach(group=>{
   group.addEventListener("click",e=>{
     const btn = e.target.closest(".zf");
     if(!btn) return;
+    document.querySelectorAll(".zf").forEach(b=>b.classList.remove("active"));
+    btn.classList.add("active");
     zoneFilter = btn.dataset.zone || "";
     document.getElementById("zoneFilter").value = zoneFilter;
     render();
@@ -1485,9 +1498,8 @@ document.getElementById("z_cancel").onclick =
   () => { zoneModal.style.display = "none"; };
 document.getElementById("z_continue").onclick = () => {
   const z = document.getElementById("z_zone").value.trim();
-  const radius = Math.max(1, parseFloat(document.getElementById("z_radius").value) || 30);
+  const radius = Math.max(1, parseFloat(document.getElementById("z_radius").value) || 50);
   zoneRadii[z] = radius;
-  zoneEnabled[z] = true;
 
   const zSel = zoneRadiusSelect();
   if(zSel) zSel.value = z;
@@ -1534,7 +1546,6 @@ document.querySelectorAll(".level-card").forEach(btn=>{
 document.addEventListener("DOMContentLoaded", () => {
   const zSel = zoneRadiusSelect();
   const rIn = zoneRadiusInput();
-  const rTg = zoneRadiusToggle();
 
   if(zSel){
     zSel.addEventListener("change", () => {
@@ -1544,15 +1555,7 @@ document.addEventListener("DOMContentLoaded", () => {
   if(rIn){
     rIn.addEventListener("change", () => {
       const z = zoneRadiusSelect().value;
-      zoneRadii[z] = Math.max(1, parseFloat(rIn.value) || 30);
-      updateZoneCircle(z);
-      writeZoneToFirebase(z);
-    });
-  }
-  if(rTg){
-    rTg.addEventListener("change", () => {
-      const z = zoneRadiusSelect().value;
-      zoneEnabled[z] = rTg.checked;
+      zoneRadii[z] = Math.max(1, parseFloat(rIn.value) || 50);
       updateZoneCircle(z);
       writeZoneToFirebase(z);
     });
@@ -1853,7 +1856,6 @@ darkToggle.onchange = () => {
         if(z.radiusMeters != null){
           zoneRadii[zid] = z.radiusMeters;
         }
-        zoneEnabled[zid] = !!z.enabled;
       });
       syncZoneUIFromState();
       ["Zone A","Zone B","Zone C"].forEach(updateZoneCircle);
