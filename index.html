@@ -783,13 +783,14 @@ body.dark .home-avatar{
   <div class="card">
     <h3 style="margin-top:0;">Add & Sync</h3>
     <p class="small muted" style="margin:4px 0 10px 0;">
-      Use this tab to add new trolley beacons and refresh the latest data from your backend.
+      Use this tab to add new trolley beacons and zone coverage, and refresh the latest data from your backend.
     </p>
     <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:4px;">
       <button id="addBtn" class="accent">Add Beacon 😊</button>
+      <button id="addZoneBtn" class="ghost">Add Zone Radius 🔵</button>
       <button id="refresh" class="ghost">Refresh data</button>
     </div>
-    <p class="small muted" style="margin-top:8px;">Refreshing pulls the latest locations from Firebase / API.</p>
+    <p class="small muted" style="margin-top:8px;">After adding a zone, click on the map to drop its blue radius circle.</p>
   </div>
 </div>
 
@@ -878,6 +879,31 @@ body.dark .home-avatar{
     <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:14px;">
       <button id="m_cancel" class="ghost">Cancel</button>
       <button id="m_continue" class="accent">Continue</button>
+    </div>
+  </div>
+</div>
+
+<!-- Add Zone Modal -->
+<div id="zoneModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:1000;align-items:center;justify-content:center;">
+  <div class="dialog">
+    <h3 style="margin:0 0 6px 0">Add Zone Radius 🔵</h3>
+    <p class="muted small" style="margin:0 0 10px 0">
+      Choose a zone and radius. After Continue, click on the map to set the zone centre.
+    </p>
+
+    <label class="small muted">Zone ID</label>
+    <select id="z_zone" style="width:100%;margin-bottom:10px;">
+      <option value="Zone A">Zone A</option>
+      <option value="Zone B">Zone B</option>
+      <option value="Zone C">Zone C</option>
+    </select>
+
+    <label class="small muted">Radius (m)</label>
+    <input id="z_radius" type="number" min="1" value="30" style="width:100%;">
+
+    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:14px;">
+      <button id="z_cancel" class="ghost">Cancel</button>
+      <button id="z_continue" class="accent">Continue</button>
     </div>
   </div>
 </div>
@@ -1242,7 +1268,6 @@ function renderMarkers(){
     idToMarker.set(b.id,m);
     clusters.addLayer(m);
   });
-  // keep zone circles on map
   Object.values(zoneCircles).forEach(c=>{
     if(c && !map.hasLayer(c)) c.addTo(map);
   });
@@ -1451,6 +1476,31 @@ document.getElementById("m_continue").onclick = () => {
   pendingBeacon = { zoneId, trolleyId };
   banner.style.display = "block";
 };
+
+/* Add zone modal */
+const zoneModal = document.getElementById("zoneModal");
+document.getElementById("addZoneBtn").onclick =
+  () => { zoneModal.style.display = "flex"; };
+document.getElementById("z_cancel").onclick =
+  () => { zoneModal.style.display = "none"; };
+document.getElementById("z_continue").onclick = () => {
+  const z = document.getElementById("z_zone").value.trim();
+  const radius = Math.max(1, parseFloat(document.getElementById("z_radius").value) || 30);
+  zoneRadii[z] = radius;
+  zoneEnabled[z] = true;
+
+  const zSel = zoneRadiusSelect();
+  if(zSel) zSel.value = z;
+  syncZoneUIFromState();
+
+  zoneModal.style.display = "none";
+  setActivePage("map");
+  zonePlacementTarget = z;
+  zonePlacementMode = true;
+  zoneBanner.style.display = "block";
+  toast(`Click on the map to set "${z}" centre`);
+};
+
 window.onkeydown = e => {
   if(e.key === "Escape"){
     placementMode = false;
@@ -1460,6 +1510,7 @@ window.onkeydown = e => {
     zonePlacementTarget = null;
     zoneBanner.style.display = "none";
     modal.style.display = "none";
+    zoneModal.style.display = "none";
     document.getElementById("levelModal").style.display = "none";
   }
 };
@@ -1519,7 +1570,6 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // initial UI sync
   syncZoneUIFromState();
 });
 
@@ -1790,7 +1840,7 @@ darkToggle.onchange = () => {
       toast("Firebase read error: " + err.message);
     });
 
-    // load Zones (radius + centre)
+    // load Zones
     const zref = firebaseDb.ref("/Zones");
     zref.on("value",(snap)=>{
       const data = snap.val() || {};
