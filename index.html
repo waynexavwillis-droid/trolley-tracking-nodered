@@ -15,7 +15,7 @@
 <!-- uibuilder client for Node-RED (safe to 404 on GitHub Pages) -->
 <script src="/uibuilder/uibuilder.iife.min.js"></script>
 
-<!-- ✅ Firebase compat SDKs (v11) -->
+<!-- Firebase compat SDKs (v11) -->
 <script src="https://www.gstatic.com/firebasejs/11.0.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/11.0.1/firebase-database-compat.js"></script>
 
@@ -25,16 +25,15 @@
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 
 <style>
-/* ---------- Light theme (food-cart style) ---------- */
 :root{
-  --bg:#f4ecff;           /* lavender base */
-  --bg-soft:#efe7ff;      /* lighter panel background */
+  --bg:#f4ecff;
+  --bg-soft:#efe7ff;
   --panel:#fdfcff;
   --panel-2:#ffffff;
   --text:#111827;
   --muted:#6b7280;
   --border:#e5e7eb;
-  --accent:#8b5cf6;       /* purple */
+  --accent:#8b5cf6;
   --accent-soft:#ede9fe;
   --accent-2:#22c55e;
   --danger:#f97373;
@@ -51,7 +50,6 @@ body{
   -webkit-font-smoothing:antialiased;
 }
 
-/* ---------- Dark theme (deep purple) ---------- */
 body.dark{
   --bg:#050317;
   --bg-soft:#080825;
@@ -138,14 +136,13 @@ button:disabled{opacity:.6;cursor:not-allowed}
 .small{font-size:12px}
 .muted{color:var(--muted)}
 
-/* ---------- Pages ---------- */
 .page{
   display:none;
   padding:16px 18px 96px 18px;
 }
 .page.active{display:block}
 
-/* Map page layout */
+/* map layout */
 #page-map main{
   display:grid;
   grid-template-columns: minmax(0,1.7fr) minmax(340px,380px);
@@ -222,7 +219,7 @@ body.dark .item:hover{
   background:var(--bg-soft);
 }
 
-/* toast / banner / dialogs */
+/* toast / banners / dialogs */
 .toast{
   position:fixed;
   right:18px;
@@ -394,7 +391,7 @@ body.dark .level-card{
   color:var(--muted);
 }
 
-/* ---------- Bottom navigation ---------- */
+/* bottom nav */
 .bottom-nav{
   position:fixed;
   left:50%;
@@ -436,7 +433,7 @@ body.dark .bottom-nav .nav-btn.active{
   color:#111827;
 }
 
-/* ---------- Home page ---------- */
+/* home hero */
 .home-hero-title{
   font-size:18px;
   font-weight:800;
@@ -446,8 +443,6 @@ body.dark .bottom-nav .nav-btn.active{
   color:var(--muted);
   margin-top:4px;
 }
-
-/* hero banner */
 .home-hero-banner{
   display:flex;
   align-items:center;
@@ -467,11 +462,9 @@ body.dark .bottom-nav .nav-btn.active{
 .hero-image span{
   font-size:42px;
 }
-.hero-text-block{
-  flex:1;
-}
+.hero-text-block{flex:1}
 
-/* home stats cards */
+/* home stats */
 .home-stats-grid{
   display:grid;
   grid-template-columns:repeat(auto-fit,minmax(160px,1fr));
@@ -502,7 +495,7 @@ body.dark .bottom-nav .nav-btn.active{
   color:var(--muted);
 }
 
-/* Home beacon list */
+/* home list */
 #homeBeaconList .home-item{
   border-radius:18px;
   border:1px solid var(--chip-br);
@@ -516,8 +509,6 @@ body.dark .bottom-nav .nav-btn.active{
 body.dark #homeBeaconList .home-item{
   background:#050317;
 }
-
-/* avatar image for each trolley */
 .home-avatar{
   width:40px;
   height:40px;
@@ -535,7 +526,7 @@ body.dark .home-avatar{
   background:#1e1638;
 }
 
-/* ---------- Detail page (food-cart style) ---------- */
+/* detail page */
 .detail-layout{
   max-width:480px;
   margin:0 auto;
@@ -575,7 +566,7 @@ body.dark .home-avatar{
   gap:10px;
 }
 
-/* Settings toggle switch */
+/* switch */
 .switch{
   position:relative;
   display:inline-block;
@@ -613,7 +604,7 @@ body.dark .home-avatar{
   transform:translateX(18px);
 }
 
-/* mobile layout */
+/* mobile */
 @media(max-width:980px){
   #page-map main{
     grid-template-columns:1fr;
@@ -640,7 +631,7 @@ body.dark .home-avatar{
 <div class="banner" id="placementBanner">Placement mode – click on map to place new beacon • Esc to cancel</div>
 <div class="banner" id="zonePlacementBanner" style="top:100px;">Zone centre mode – click on map to set zone centre • Esc to cancel</div>
 
-<!-- ---------- HOME PAGE ---------- -->
+<!-- HOME PAGE -->
 <div id="page-home" class="page active">
   <div class="card">
     <div class="row" style="margin-bottom:6px;">
@@ -689,7 +680,7 @@ body.dark .home-avatar{
   </div>
 </div>
 
-<!-- ---------- MAP PAGE ---------- -->
+<!-- MAP PAGE -->
 <div id="page-map" class="page">
   <main>
     <div id="map"></div>
@@ -709,9 +700,7 @@ body.dark .home-avatar{
         <div class="quick-filters" id="quickFilters"></div>
 
         <div style="margin-top:12px" id="zoneProgress"></div>
-        <div class="small muted" style="margin-top:6px">Overview shows count share by zone (relative to max zone count).</div>
 
-        <!-- 🔵 Zone centre controls (no radius text) -->
         <hr>
         <div class="row" style="gap:8px;margin-bottom:4px;">
           <select id="zoneCenterSelect" style="flex:1;min-width:0;">
@@ -763,7 +752,7 @@ body.dark .home-avatar{
   </main>
 </div>
 
-<!-- ---------- ADD PAGE ---------- -->
+<!-- ADD PAGE -->
 <div id="page-add" class="page">
   <div class="card">
     <h3 style="margin-top:0;">Add & Sync</h3>
@@ -779,7 +768,7 @@ body.dark .home-avatar{
   </div>
 </div>
 
-<!-- ---------- SETTINGS PAGE ---------- -->
+<!-- SETTINGS PAGE -->
 <div id="page-settings" class="page">
   <div class="card">
     <h3 style="margin-top:0;">Settings</h3>
@@ -796,7 +785,7 @@ body.dark .home-avatar{
   </div>
 </div>
 
-<!-- ---------- FULL DETAIL PAGE ---------- -->
+<!-- FULL DETAIL PAGE -->
 <div id="page-detail" class="page">
   <div class="detail-layout">
     <div class="card">
@@ -828,7 +817,7 @@ body.dark .home-avatar{
   </div>
 </div>
 
-<!-- ---------- Bottom navigation ---------- -->
+<!-- Bottom nav -->
 <div class="bottom-nav" id="bottomNav">
   <button class="nav-btn active" data-page="home">
     <span class="icon">🏠</span><span>Home</span>
@@ -957,17 +946,15 @@ body.dark .home-avatar{
 <div id="toast" class="toast">Saved</div>
 
 <script>
-/* ---------- Config ---------- */
 const API_URL = "/api/beacons";
 const ENABLE_POST = false;
 const AUTO_REFRESH_MS = 10000;
-const FIXED_ZONE_RADIUS = 50; // 50 metres (not shown in UI)
+const FIXED_ZONE_RADIUS = 50; // 50m blue circles (no UI text)
 
-/* ---------- uibuilder ---------- */
 let ui = null;
 if (window.uibuilder) ui = window.uibuilder;
 
-/* ---------- Map ---------- */
+/* Map */
 const TP_CENTER = [1.3455, 103.9323];
 const map = L.map("map").setView(TP_CENTER, 17);
 L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
@@ -976,7 +963,7 @@ L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
 const clusters = L.markerClusterGroup({ disableClusteringAtZoom: 19 });
 map.addLayer(clusters);
 
-/* ---------- Level presets ---------- */
+/* Level presets */
 const LEVEL_VIEWS = {
   L1: { center:[1.3455, 103.9323], zoom:17 },
   L2: { center:[1.3644, 103.9915], zoom:16 },
@@ -988,7 +975,7 @@ function flyToLevel(level){
   map.flyTo(v.center, v.zoom, { duration:1.2 });
 }
 
-/* ---------- State ---------- */
+/* State */
 let beacons = [];
 const idToMarker = new Map();
 let searchText = "";
@@ -999,9 +986,9 @@ let selectedId = null;
 let selectedBeacon = null;
 let detailBeacon = null;
 
-/* 🔵 Zone coverage state (dynamic zones, 50m radius) */
-let zoneCenters = {};       // { zoneId: [lat,lng] }
-let zoneCircles = {};       // { zoneId: L.circle }
+/* zone coverage (logic only) */
+let zoneCenters = {};   // { zoneId: [lat,lng] }
+let zoneCircles = {};   // { zoneId: L.circle }
 let zonePlacementMode = false;
 let zonePlacementTarget = null;
 
@@ -1012,7 +999,7 @@ let userMarker = null;
 let targetLatLng = null;
 let orientationHandler = null;
 
-/* ---------- Helpers ---------- */
+/* Helpers */
 function escapeH(s){
   return String(s ?? "").replace(/[&<>"']/g, m => ({
     "&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"
@@ -1053,7 +1040,7 @@ function bearingBetween(aLat,aLng,bLat,bLng){
   return (toDeg(Math.atan2(y,x)) + 360) % 360;
 }
 
-/* ---------- Page switching ---------- */
+/* Page switching */
 function setActivePage(page){
   document.querySelectorAll(".page").forEach(p=>{
     p.classList.toggle("active", p.id === "page-" + page);
@@ -1066,7 +1053,7 @@ function setActivePage(page){
   }
 }
 
-/* ---------- Zone helpers (dynamic) ---------- */
+/* zones */
 function getKnownZones(){
   const s = new Set();
   beacons.forEach(b => { if (b.zone) s.add(b.zone); });
@@ -1077,7 +1064,6 @@ function getKnownZones(){
 function refreshZoneLists(){
   const zones = getKnownZones();
 
-  // zoneFilter <select>
   const zFilter = document.getElementById("zoneFilter");
   const prevFilter = zoneFilter || "";
   zFilter.innerHTML = '<option value="">All zones</option>' +
@@ -1089,45 +1075,36 @@ function refreshZoneLists(){
     zFilter.value = "";
   }
 
-  // quick filters
   const quick = document.getElementById("quickFilters");
-  if(quick){
-    quick.innerHTML = "";
-    const makeBtn = (label, value) => {
-      const b = document.createElement("button");
-      b.className = "zf" + ((value === zoneFilter) ? " active" : "");
-      b.dataset.zone = value;
-      b.textContent = label;
-      return b;
-    };
-    quick.appendChild(makeBtn("All", ""));
-    zones.forEach(z=>{
-      quick.appendChild(makeBtn(z, z));
-    });
-  }
+  quick.innerHTML = "";
+  const makeBtn = (label, value) => {
+    const b = document.createElement("button");
+    b.className = "zf" + ((value === zoneFilter) ? " active" : "");
+    b.dataset.zone = value;
+    b.textContent = label;
+    return b;
+  };
+  quick.appendChild(makeBtn("All", ""));
+  zones.forEach(z=>{
+    quick.appendChild(makeBtn(z, z));
+  });
 
-  // zoneCenterSelect
   const centerSel = document.getElementById("zoneCenterSelect");
-  if(centerSel){
-    const prevC = centerSel.value;
-    centerSel.innerHTML = '<option value="">Select zone</option>' +
-      zones.map(z => `<option value="${escapeH(z)}">${escapeH(z)}</option>`).join("");
-    if(prevC && zones.includes(prevC)) centerSel.value = prevC;
-  }
+  const prevC = centerSel.value;
+  centerSel.innerHTML = '<option value="">Select zone</option>' +
+    zones.map(z => `<option value="${escapeH(z)}">${escapeH(z)}</option>`).join("");
+  if(prevC && zones.includes(prevC)) centerSel.value = prevC;
 
-  // labels
   document.getElementById("activeZonePill").textContent =
     zoneFilter || "All zones";
   document.getElementById("overviewZoneLine").textContent =
     zoneFilter ? `Zone: ${zoneFilter}` : "All zones";
 }
 
-/* show/hide circles based on current filter */
 function updateZoneCircleVisibilityBasedOnFilter(){
   for(const [zoneId, circle] of Object.entries(zoneCircles)){
     if(!circle) continue;
     if(!zoneFilter){
-      // all zones -> show all
       if(!map.hasLayer(circle)) circle.addTo(map);
     }else if(zoneFilter === zoneId){
       if(!map.hasLayer(circle)) circle.addTo(map);
@@ -1166,7 +1143,7 @@ function updateZoneCircle(zoneId){
   updateZoneCircleVisibilityBasedOnFilter();
 }
 
-/* ---------- Detail panel ---------- */
+/* detail panel */
 function showDetails(b){
   selectedId = b.id;
   selectedBeacon = b;
@@ -1184,7 +1161,7 @@ function showDetails(b){
       : "—";
 }
 
-/* ---------- Full-screen detail page ---------- */
+/* full detail page */
 function openDetailPage(b){
   detailBeacon = b;
   document.getElementById("h_name").textContent = b.name || "—";
@@ -1216,7 +1193,7 @@ document.getElementById("detailFind").onclick = () => {
   }, 350);
 };
 
-/* ---------- Delete (Firebase) ---------- */
+/* delete */
 const confirmBox = document.getElementById("confirm");
 document.getElementById("c_cancel").onclick = () =>
   confirmBox.style.display = "none";
@@ -1245,7 +1222,7 @@ document.getElementById("c_ok").onclick = async () => {
   document.getElementById("detailsEmpty").style.display = "block";
 };
 
-/* ---------- Stats (map + home) ---------- */
+/* stats */
 function renderStats(){
   const total = beacons.filter(zoneMatches).length;
   document.getElementById("totalCount").textContent = total;
@@ -1287,7 +1264,7 @@ function renderStats(){
     zonesWithActivity.size;
 }
 
-/* ---------- Markers & lists ---------- */
+/* markers & lists */
 function renderMarkers(){
   clusters.clearLayers();
   idToMarker.clear();
@@ -1345,7 +1322,7 @@ function renderOverview(){
   });
 }
 
-/* ---------- Home list ---------- */
+/* home list */
 function renderHome(){
   const listEl = document.getElementById("homeBeaconList");
   const emptyEl = document.getElementById("homeEmpty");
@@ -1396,7 +1373,7 @@ function render(){
   renderHome();
 }
 
-/* ---------- REST fallback (optional) ---------- */
+/* REST fallback */
 async function fetchBeacons(){
   try{
     const r = await fetch(API_URL);
@@ -1417,7 +1394,7 @@ async function refresh(){
   render();
 }
 
-/* ---------- Firebase write helpers ---------- */
+/* Firebase write */
 let firebaseDb = null;
 
 async function writeToFirebaseRec(payload){
@@ -1461,7 +1438,7 @@ async function writeZoneToFirebase(zoneId){
   }
 }
 
-/* ---------- UI bindings ---------- */
+/* UI bindings */
 document.getElementById("search").oninput = e=>{
   searchText = e.target.value.trim();
   render();
@@ -1470,14 +1447,11 @@ document.getElementById("zoneFilter").onchange = e=>{
   zoneFilter = e.target.value.trim();
   render();
 };
-
 document.getElementById("bottomNav").addEventListener("click", e=>{
   const btn = e.target.closest(".nav-btn");
   if(!btn) return;
   setActivePage(btn.dataset.page);
 });
-
-/* quick filters */
 document.getElementById("quickFilters").addEventListener("click", e=>{
   const btn = e.target.closest(".zf");
   if(!btn) return;
@@ -1485,7 +1459,7 @@ document.getElementById("quickFilters").addEventListener("click", e=>{
   render();
 });
 
-/* Add beacon modal */
+/* add beacon modal */
 const modal = document.getElementById("modalBackdrop");
 const banner = document.getElementById("placementBanner");
 const zoneBanner = document.getElementById("zonePlacementBanner");
@@ -1509,7 +1483,7 @@ document.getElementById("m_continue").onclick = () => {
   render();
 };
 
-/* Add zone modal */
+/* add zone modal */
 const zoneModal = document.getElementById("zoneModal");
 document.getElementById("addZoneBtn").onclick =
   () => { zoneModal.style.display = "flex"; };
@@ -1547,7 +1521,7 @@ window.onkeydown = e => {
   }
 };
 
-/* Level modal */
+/* level modal */
 const levelModal = document.getElementById("levelModal");
 document.getElementById("levelBtn").onclick =
   () => { levelModal.style.display = "flex"; };
@@ -1562,7 +1536,7 @@ document.querySelectorAll(".level-card").forEach(btn=>{
   };
 });
 
-/* Zone centre button */
+/* zone centre button */
 document.getElementById("zoneCenterBtn").onclick = () => {
   const sel = document.getElementById("zoneCenterSelect");
   const z = sel.value.trim();
@@ -1577,9 +1551,8 @@ document.getElementById("zoneCenterBtn").onclick = () => {
   toast(`Click on the map to set "${z}" centre`);
 };
 
-/* ---------- Map click: zone centre OR beacon ---------- */
+/* map click */
 map.on("click",async e=>{
-  // Zone centre placement
   if(zonePlacementMode && zonePlacementTarget){
     const center = [e.latlng.lat, e.latlng.lng];
     zoneCenters[zonePlacementTarget] = center;
@@ -1593,7 +1566,6 @@ map.on("click",async e=>{
     return;
   }
 
-  // Beacon placement
   if(!placementMode || !pendingBeacon) return;
   placementMode = false;
   banner.style.display = "none";
@@ -1643,7 +1615,7 @@ map.on("click",async e=>{
   pendingBeacon = null;
 });
 
-/* ---------- Finder ---------- */
+/* finder */
 const finderEl = document.getElementById("finder");
 const findTargetEl = document.getElementById("findTarget");
 const findDistanceEl = document.getElementById("findDistance");
@@ -1744,7 +1716,7 @@ document.getElementById("findRecenter").onclick = () => {
   if(userMarker){ map.panTo(userMarker.getLatLng()); }
 };
 
-/* ---------- uibuilder listener ---------- */
+/* uibuilder listener */
 if (ui && typeof ui.onChange === "function") {
   ui.onChange('msg', (msg) => {
     console.log('uibuilder msg received:', msg);
@@ -1788,7 +1760,7 @@ if (ui && typeof ui.onChange === "function") {
   });
 }
 
-/* ---------- Dark mode toggle ---------- */
+/* dark mode */
 const darkToggle = document.getElementById("darkToggle");
 const savedTheme = localStorage.getItem("theme");
 if(savedTheme === "dark"){
@@ -1801,7 +1773,7 @@ darkToggle.onchange = () => {
   localStorage.setItem("theme", isDark ? "dark" : "light");
 };
 
-/* ---------- Firebase init (Tracking + Zones) ---------- */
+/* Firebase init */
 (function initFirebase(){
   const firebaseConfig = {
     apiKey: "AIzaSyCYE1hpoQV_QlfhQz7hlZResGuunbY1DG0",
@@ -1818,7 +1790,6 @@ darkToggle.onchange = () => {
     if (firebase.apps.length === 0) firebase.initializeApp(firebaseConfig);
     firebaseDb = firebase.database();
 
-    // live Tracking
     const ref = firebaseDb.ref("/Tracking");
     ref.on("value",(snap)=>{
       const data = snap.val() || {};
@@ -1845,7 +1816,6 @@ darkToggle.onchange = () => {
       toast("Firebase read error: " + err.message);
     });
 
-    // load Zones
     const zref = firebaseDb.ref("/Zones");
     zref.on("value",(snap)=>{
       const data = snap.val() || {};
@@ -1869,7 +1839,7 @@ darkToggle.onchange = () => {
   }
 })();
 
-/* ---------- Boot ---------- */
+/* boot */
 refresh();
 setInterval(refresh, AUTO_REFRESH_MS);
 setActivePage("home");
