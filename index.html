@@ -447,7 +447,7 @@ body.dark .bottom-nav .nav-btn.active{
   margin-top:4px;
 }
 
-/* new: hero banner like sushi card */
+/* hero banner */
 .home-hero-banner{
   display:flex;
   align-items:center;
@@ -650,7 +650,6 @@ body.dark .home-avatar{
 
     <div class="home-hero-banner">
       <div class="hero-image">
-        <!-- trolley “picture” -->
         <span>🛒</span>
       </div>
       <div class="hero-text-block">
@@ -811,7 +810,7 @@ body.dark .home-avatar{
   </div>
 </div>
 
-<!-- ---------- FULL DETAIL PAGE (cart style) ---------- -->
+<!-- ---------- FULL DETAIL PAGE ---------- -->
 <div id="page-detail" class="page">
   <div class="detail-layout">
     <div class="card">
@@ -1001,16 +1000,10 @@ let selectedBeacon = null;
 let detailBeacon = null;
 
 /* 🔵 Zone coverage state (per zone) */
-const zoneCenters = {
-  "Zone A": null,
-  "Zone B": null,
-  "Zone C": null
-};
-const zoneCircles = {
-  "Zone A": null,
-  "Zone B": null,
-  "Zone C": null
-};
+const zoneCenters = { "Zone A": null, "Zone B": null, "Zone C": null };
+const zoneCircles = { "Zone A": null, "Zone B": null, "Zone C": null };
+const zoneRadii = { "Zone A": 30, "Zone B": 30, "Zone C": 30 };
+const zoneEnabled = { "Zone A": false, "Zone B": false, "Zone C": false };
 let zonePlacementMode = false;
 let zonePlacementTarget = null;
 
@@ -1082,27 +1075,16 @@ const zoneRadiusToggle = () => document.getElementById("zoneRadiusToggle");
 
 function updateZoneCircle(zoneId){
   const center = zoneCenters[zoneId];
-  const radiusEl = zoneRadiusInput();
-  const toggleEl = zoneRadiusToggle();
-  if(!radiusEl || !toggleEl) return;
+  const enabled = !!zoneEnabled[zoneId];
+  const radiusMeters = Math.max(1, parseFloat(zoneRadii[zoneId] ?? 30));
 
-  const show = toggleEl.checked;
-
-  if(!show){
+  if(!enabled || !center){
     if(zoneCircles[zoneId]){
       map.removeLayer(zoneCircles[zoneId]);
       zoneCircles[zoneId] = null;
     }
     return;
   }
-
-  if(!center){
-    toast("Set zone centre on the map first.");
-    toggleEl.checked = false;
-    return;
-  }
-
-  const radiusMeters = Math.max(1, parseFloat(radiusEl.value) || 30);
 
   if(!zoneCircles[zoneId]){
     zoneCircles[zoneId] = L.circle(center, {
@@ -1119,7 +1101,18 @@ function updateZoneCircle(zoneId){
   }
 }
 
-/* ---------- Map details ---------- */
+function syncZoneUIFromState(){
+  const zSel = zoneRadiusSelect();
+  const rIn = zoneRadiusInput();
+  const rTg = zoneRadiusToggle();
+  if(!zSel || !rIn || !rTg) return;
+  const z = zSel.value;
+  rIn.value = zoneRadii[z] ?? 30;
+  rTg.checked = !!zoneEnabled[z];
+  updateZoneCircle(z);
+}
+
+/* ---------- Detail panel ---------- */
 function showDetails(b){
   selectedId = b.id;
   selectedBeacon = b;
@@ -1168,37 +1161,6 @@ document.getElementById("detailFind").onclick = () => {
     }
   }, 350);
 };
-
-/* Attach listeners for zone coverage UI */
-document.addEventListener("DOMContentLoaded", () => {
-  const rIn = zoneRadiusInput();
-  const rTg = zoneRadiusToggle();
-  if(rIn){
-    rIn.addEventListener("change", () => {
-      const zSel = zoneRadiusSelect();
-      if(!zSel) return;
-      updateZoneCircle(zSel.value);
-    });
-  }
-  if(rTg){
-    rTg.addEventListener("change", () => {
-      const zSel = zoneRadiusSelect();
-      if(!zSel) return;
-      updateZoneCircle(zSel.value);
-    });
-  }
-  const zBtn = document.getElementById("zoneCenterBtn");
-  if(zBtn){
-    zBtn.addEventListener("click", () => {
-      const zSel = zoneRadiusSelect();
-      if(!zSel) return;
-      zonePlacementTarget = zSel.value;
-      zonePlacementMode = true;
-      document.getElementById("zonePlacementBanner").style.display = "block";
-      toast(`Click on the map to set "${zonePlacementTarget}" centre`);
-    });
-  }
-});
 
 /* ---------- Delete (Firebase) ---------- */
 const confirmBox = document.getElementById("confirm");
@@ -1257,7 +1219,6 @@ function renderStats(){
     zoneFilter || "All zones";
   document.getElementById("activeModeLabel").textContent = "Showing: Beacons";
 
-  // Home stats with zone filter
   const zoneFiltered = beacons.filter(zoneMatches);
   const totalBeacons = zoneFiltered.length;
   document.getElementById("statBeaconCount").textContent = totalBeacons;
@@ -1281,10 +1242,9 @@ function renderMarkers(){
     idToMarker.set(b.id,m);
     clusters.addLayer(m);
   });
-
-  // keep zone circles on top after re-render
-  Object.entries(zoneCircles).forEach(([zoneId,circle])=>{
-    if(circle && !map.hasLayer(circle)) circle.addTo(map);
+  // keep zone circles on map
+  Object.values(zoneCircles).forEach(c=>{
+    if(c && !map.hasLayer(c)) c.addTo(map);
   });
 }
 function renderOverview(){
@@ -1399,6 +1359,52 @@ async function refresh(){
   render();
 }
 
+/* ---------- Firebase write helpers ---------- */
+let firebaseDb = null;
+
+async function writeToFirebaseRec(payload){
+  if(!firebaseDb){
+    console.warn("No Firebase DB (likely missing config)");
+    return;
+  }
+  const id = payload.trolleyId || payload.id;
+  if(!id) return;
+  const obj = {
+    zoneId: payload.zoneId || "",
+    trolleyId: id,
+    latitude: payload.latitude ?? null,
+    longitude: payload.longitude ?? null,
+    rssi: payload.rssi ?? null,
+    timestamp: payload.timestamp || new Date().toISOString()
+  };
+  try{
+    await firebaseDb.ref(`/Tracking/${id}`).set(obj);
+  }catch(e){
+    console.error("Firebase write error:", e);
+    toast("Firebase write error: " + e.message);
+  }
+}
+
+async function writeZoneToFirebase(zoneId){
+  if(!firebaseDb) return;
+  const center = zoneCenters[zoneId];
+  const radius = zoneRadii[zoneId] ?? null;
+  const enabled = !!zoneEnabled[zoneId];
+  const payload = {
+    zoneId,
+    centerLat: center ? center[0] : null,
+    centerLng: center ? center[1] : null,
+    radiusMeters: radius,
+    enabled
+  };
+  try{
+    await firebaseDb.ref(`/Zones/${zoneId}`).set(payload);
+  }catch(e){
+    console.error("Zone write error:", e);
+    toast("Zone save error: " + e.message);
+  }
+}
+
 /* ---------- UI bindings ---------- */
 document.getElementById("search").oninput = e=>{
   searchText = e.target.value.trim();
@@ -1473,97 +1479,66 @@ document.querySelectorAll(".level-card").forEach(btn=>{
   };
 });
 
-/* ---------- Firebase glue ---------- */
-let firebaseDb = null;
-(function initFirebase(){
-  const firebaseConfig = {
-    apiKey: "AIzaSyCYE1hpoQV_QlfhQz7hlZResGuunbY1DG0",
-    authDomain: "trolley-tracking-678c5.firebaseapp.com",
-    databaseURL: "https://trolley-tracking-678c5-default-rtdb.asia-southeast1.firebasedatabase.app",
-    projectId: "trolley-tracking-678c5",
-    storageBucket: "trolley-tracking-678c5.appspot.com",
-    messagingSenderId: "830477552391",
-    appId: "1:830477552391:web:558930d01a8f594a3953a2",
-    measurementId: "G-RQ00F6KMXC"
-  };
+/* ---------- Zone UI listeners ---------- */
+document.addEventListener("DOMContentLoaded", () => {
+  const zSel = zoneRadiusSelect();
+  const rIn = zoneRadiusInput();
+  const rTg = zoneRadiusToggle();
 
-  try{
-    if (firebase.apps.length === 0) firebase.initializeApp(firebaseConfig);
-    firebaseDb = firebase.database();
-
-    const ref = firebaseDb.ref("/Tracking");
-    ref.on("value",(snap)=>{
-      const data = snap.val() || {};
-      const arr = [];
-      for(const id in data){
-        const v = data[id] || {};
-        const lat = v.latitude ?? v.lat ?? null;
-        const lng = v.longitude ?? v.lng ?? null;
-        arr.push({
-          id,
-          name: (v.zoneId ? `${v.zoneId} • ` : "") + id,
-          zone: v.zoneId || v.zone || "",
-          lat,
-          lng,
-          lastUpdate: v.timestamp || v.lastUpdate || ""
-        });
-      }
-      beacons = arr;
-      document.getElementById("lastSync").textContent =
-        "Last sync: " + new Date().toLocaleTimeString();
-      render();
-    },(err)=>{
-      console.error("Firebase read error:", err);
-      toast("Firebase read error: " + err.message);
+  if(zSel){
+    zSel.addEventListener("change", () => {
+      syncZoneUIFromState();
     });
-  }catch(e){
-    console.error("Firebase init error:", e);
-    toast("Firebase init error — see console");
   }
-})();
+  if(rIn){
+    rIn.addEventListener("change", () => {
+      const z = zoneRadiusSelect().value;
+      zoneRadii[z] = Math.max(1, parseFloat(rIn.value) || 30);
+      updateZoneCircle(z);
+      writeZoneToFirebase(z);
+    });
+  }
+  if(rTg){
+    rTg.addEventListener("change", () => {
+      const z = zoneRadiusSelect().value;
+      zoneEnabled[z] = rTg.checked;
+      updateZoneCircle(z);
+      writeZoneToFirebase(z);
+    });
+  }
 
-async function writeToFirebaseRec(payload){
-  if(!firebaseDb){
-    console.warn("No Firebase DB (likely missing config)");
-    return;
+  const zBtn = document.getElementById("zoneCenterBtn");
+  if(zBtn){
+    zBtn.addEventListener("click", () => {
+      const zSel2 = zoneRadiusSelect();
+      if(!zSel2) return;
+      zonePlacementTarget = zSel2.value;
+      zonePlacementMode = true;
+      zoneBanner.style.display = "block";
+      toast(`Click on the map to set "${zonePlacementTarget}" centre`);
+    });
   }
-  const id = payload.trolleyId || payload.id;
-  if(!id) return;
-  const obj = {
-    zoneId: payload.zoneId || "",
-    trolleyId: id,
-    latitude: payload.latitude ?? null,
-    longitude: payload.longitude ?? null,
-    rssi: payload.rssi ?? null,
-    timestamp: payload.timestamp || new Date().toISOString()
-  };
-  try{
-    await firebaseDb.ref(`/Tracking/${id}`).set(obj);
-  }catch(e){
-    console.error("Firebase write error:", e);
-    toast("Firebase write error: " + e.message);
-  }
-}
 
-/* ---------- Map click → zone centre OR place beacon ---------- */
+  // initial UI sync
+  syncZoneUIFromState();
+});
+
+/* ---------- Map click: zone centre OR place beacon ---------- */
 map.on("click",async e=>{
-  /* Zone centre placement takes priority */
+  // Zone centre placement
   if(zonePlacementMode && zonePlacementTarget){
     const center = [e.latlng.lat, e.latlng.lng];
     zoneCenters[zonePlacementTarget] = center;
     toast(`Zone centre set for ${zonePlacementTarget}`);
     zonePlacementMode = false;
-    zonePlacementTarget = null;
     zoneBanner.style.display = "none";
 
-    // if toggle is on and this zone is selected, update circle
-    const sel = zoneRadiusSelect();
-    if(sel && sel.value){
-      updateZoneCircle(sel.value);
-    }
+    updateZoneCircle(zonePlacementTarget);
+    writeZoneToFirebase(zonePlacementTarget);
     return;
   }
 
+  // Beacon placement
   if(!placementMode || !pendingBeacon) return;
   placementMode = false;
   banner.style.display = "none";
@@ -1770,6 +1745,75 @@ darkToggle.onchange = () => {
   document.body.classList.toggle("dark", isDark);
   localStorage.setItem("theme", isDark ? "dark" : "light");
 };
+
+/* ---------- Firebase init (Tracking + Zones) ---------- */
+(function initFirebase(){
+  const firebaseConfig = {
+    apiKey: "AIzaSyCYE1hpoQV_QlfhQz7hlZResGuunbY1DG0",
+    authDomain: "trolley-tracking-678c5.firebaseapp.com",
+    databaseURL: "https://trolley-tracking-678c5-default-rtdb.asia-southeast1.firebasedatabase.app",
+    projectId: "trolley-tracking-678c5",
+    storageBucket: "trolley-tracking-678c5.appspot.com",
+    messagingSenderId: "830477552391",
+    appId: "1:830477552391:web:558930d01a8f594a3953a2",
+    measurementId: "G-RQ00F6KMXC"
+  };
+
+  try{
+    if (firebase.apps.length === 0) firebase.initializeApp(firebaseConfig);
+    firebaseDb = firebase.database();
+
+    // live Tracking
+    const ref = firebaseDb.ref("/Tracking");
+    ref.on("value",(snap)=>{
+      const data = snap.val() || {};
+      const arr = [];
+      for(const id in data){
+        const v = data[id] || {};
+        const lat = v.latitude ?? v.lat ?? null;
+        const lng = v.longitude ?? v.lng ?? null;
+        arr.push({
+          id,
+          name: (v.zoneId ? `${v.zoneId} • ` : "") + id,
+          zone: v.zoneId || v.zone || "",
+          lat,
+          lng,
+          lastUpdate: v.timestamp || v.lastUpdate || ""
+        });
+      }
+      beacons = arr;
+      document.getElementById("lastSync").textContent =
+        "Last sync: " + new Date().toLocaleTimeString();
+      render();
+    },(err)=>{
+      console.error("Firebase read error:", err);
+      toast("Firebase read error: " + err.message);
+    });
+
+    // load Zones (radius + centre)
+    const zref = firebaseDb.ref("/Zones");
+    zref.on("value",(snap)=>{
+      const data = snap.val() || {};
+      ["Zone A","Zone B","Zone C"].forEach(zid=>{
+        const z = data[zid];
+        if(!z) return;
+        if(z.centerLat != null && z.centerLng != null){
+          zoneCenters[zid] = [z.centerLat, z.centerLng];
+        }
+        if(z.radiusMeters != null){
+          zoneRadii[zid] = z.radiusMeters;
+        }
+        zoneEnabled[zid] = !!z.enabled;
+      });
+      syncZoneUIFromState();
+      ["Zone A","Zone B","Zone C"].forEach(updateZoneCircle);
+    });
+
+  }catch(e){
+    console.error("Firebase init error:", e);
+    toast("Firebase init error — see console");
+  }
+})();
 
 /* ---------- Boot ---------- */
 refresh();
