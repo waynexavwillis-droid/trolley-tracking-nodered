@@ -20,47 +20,49 @@
 <script src="https://www.gstatic.com/firebasejs/11.0.1/firebase-database-compat.js"></script>
 
 <style>
-/* ---------- Light theme ---------- */
+/* ---------- Light theme (food-cart style) ---------- */
 :root{
-  --bg:#e8f0fb;
-  --bg-soft:#eef2ff;
-  --panel:#f9fafb;
+  --bg:#f4ecff;           /* lavender base */
+  --bg-soft:#efe7ff;      /* lighter panel background */
+  --panel:#fdfcff;
   --panel-2:#ffffff;
-  --text:#020617;
+  --text:#111827;
   --muted:#6b7280;
-  --border:#e2e8f0;
-  --accent:#0ea5e9;
-  --accent-soft:#e0f2fe;
+  --border:#e5e7eb;
+  --accent:#8b5cf6;       /* purple */
+  --accent-soft:#ede9fe;
   --accent-2:#22c55e;
-  --danger:#ef4444;
-  --chip:#f3f4f6;
-  --chip-br:#cbd5e1;
+  --danger:#f97373;
+  --chip:#f4f4ff;
+  --chip-br:#e0e7ff;
 }
+
 *{box-sizing:border-box}
 body{
   margin:0;
-  background:radial-gradient(1000px 1000px at 0% 0%,#e0edff,#fdfbff);
+  background:radial-gradient(1200px 1200px at 50% -200px,#f4ecff,#ede9fe 50%,#fdfbff);
   color:var(--text);
-  font-family:Inter,ui-sans-serif,system-ui,Segoe UI,Roboto,Arial;
+  font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+  -webkit-font-smoothing:antialiased;
 }
 
-/* ---------- Dark theme (deep navy + soft blue) ---------- */
+/* ---------- Dark theme (deep purple) ---------- */
 body.dark{
-  --bg:#020617;
-  --bg-soft:#020b1f;
-  --panel:#020b1f;
-  --panel-2:#020b1f;
+  --bg:#050317;
+  --bg-soft:#080825;
+  --panel:#0b0b2b;
+  --panel-2:#0f102e;
   --text:#e5e7eb;
   --muted:#9ca3af;
-  --border:#1f2937;
-  --accent:#38bdf8;
-  --accent-soft:#082f49;
-  --accent-2:#a3e635;
+  --border:#262b4c;
+  --accent:#a855f7;
+  --accent-soft:#1e1638;
+  --accent-2:#4ade80;
   --danger:#f97373;
-  --chip:#020617;
-  --chip-br:#374151;
+  --chip:#050317;
+  --chip-br:#303257;
 
-  background:radial-gradient(1200px 1200px at 0% 0%,#020617,#000000);
+  background:radial-gradient(1200px 1200px at 50% -200px,#050317,#02010b 60%,#000000);
 }
 
 /* top bar */
@@ -68,18 +70,18 @@ header{
   position:sticky;
   top:0;
   z-index:10;
-  background:linear-gradient(180deg,rgba(255,255,255,.97),rgba(248,250,252,.92));
+  background:linear-gradient(180deg,rgba(244,236,255,.96),rgba(244,236,255,.88));
   backdrop-filter:blur(14px);
-  border-bottom:1px solid rgba(226,232,240,.9);
+  border-bottom:1px solid rgba(229,231,235,.9);
   display:flex;
   flex-wrap:wrap;
   gap:10px;
   align-items:center;
-  padding:10px 16px;
+  padding:12px 18px;
 }
 body.dark header{
-  background:linear-gradient(180deg,rgba(6,12,30,.98),rgba(6,12,30,.96));
-  border-bottom-color:#111827;
+  background:linear-gradient(180deg,rgba(5,3,23,.97),rgba(5,3,23,.94));
+  border-bottom-color:#18181b;
 }
 header h1{
   font-size:18px;
@@ -87,11 +89,12 @@ header h1{
   font-weight:800;
   letter-spacing:.04em;
 }
+
 input,select,button{
-  background:#f3f4f6;
+  background:#f9fafb;
   border:1px solid var(--chip-br);
   color:var(--text);
-  padding:8px 10px;
+  padding:9px 12px;
   border-radius:999px;
   font-size:14px;
   outline:none;
@@ -99,25 +102,26 @@ input,select,button{
 body.dark input,
 body.dark select,
 body.dark button{
-  background:#020617;
+  background:#050317;
 }
 input::placeholder{color:#9ca3af}
 select option{background:#ffffff;color:var(--text)}
+
 button.accent{
   background:var(--accent);
-  color:#020617;
+  color:#fdfcff;
   border:none;
-  box-shadow:0 8px 16px rgba(56,189,248,.32);
+  box-shadow:0 10px 18px rgba(139,92,246,.35);
 }
 button.ghost{
-  background:#f3f4f6;
-  color:#020617;
+  background:#f9fafb;
+  color:#111827;
   border:1px solid var(--chip-br);
 }
 body.dark button.ghost{
-  background:#020617;
+  background:#050317;
   color:#e5e7eb;
-  border-color:#374151;
+  border-color:#303257;
 }
 button.danger{
   background:var(--danger);
@@ -129,13 +133,13 @@ button:disabled{opacity:.6;cursor:not-allowed}
 .small{font-size:12px}
 .muted{color:var(--muted)}
 
-/* hide viewMode selector visually but keep logic */
+/* hide view selector visually; keep for JS */
 #viewMode{display:none}
 
 /* ---------- Pages ---------- */
 .page{
   display:none;
-  padding:14px 16px 90px 16px; /* bottom nav space */
+  padding:16px 18px 96px 18px;
 }
 .page.active{display:block}
 
@@ -144,14 +148,14 @@ button:disabled{opacity:.6;cursor:not-allowed}
   display:grid;
   grid-template-columns: minmax(0,1.7fr) minmax(340px,380px);
   gap:18px;
-  height:calc(100vh - 60px - 90px);
+  height:calc(100vh - 64px - 96px);
 }
 #map{
   width:100%;
   height:100%;
-  border-radius:26px;
+  border-radius:28px;
   overflow:hidden;
-  box-shadow:0 24px 55px rgba(15,23,42,.65);
+  box-shadow:0 26px 60px rgba(15,23,42,.55);
 }
 aside{
   background:transparent;
@@ -164,55 +168,55 @@ aside{
 .card{
   background:var(--panel-2);
   border:1px solid var(--border);
-  border-radius:22px;
-  padding:14px;
-  margin-bottom:14px;
+  border-radius:26px;
+  padding:16px 18px;
+  margin-bottom:16px;
   box-shadow:
-    0 1px 0 rgba(148,163,184,.35),
-    0 18px 38px rgba(15,23,42,.45);
+    0 18px 28px rgba(148,163,184,.22);
 }
 body.dark .card{
   box-shadow:
-    0 1px 0 rgba(15,23,42,.9),
-    0 18px 38px rgba(0,0,0,.9);
+    0 24px 40px rgba(0,0,0,.9);
 }
+
 .row{display:flex;justify-content:space-between;gap:8px;align-items:center}
 hr{border:none;border-top:1px solid var(--border);margin:10px 0}
 .pill{
   display:inline-block;
-  padding:3px 10px;
+  padding:4px 10px;
   border-radius:999px;
   font-size:11px;
   border:1px solid var(--chip-br);
   background:var(--chip);
-  color:#1e3a8a;
+  color:#4b5563;
 }
 body.dark .pill{
-  background:#020617;
+  background:#050317;
   color:#e5e7eb;
 }
+
 .list{
   display:flex;
   flex-direction:column;
-  gap:8px;
+  gap:10px;
   max-height:420px;
   overflow:auto;
 }
 .item{
   border:1px solid var(--chip-br);
   border-radius:18px;
-  padding:8px 11px;
+  padding:9px 12px;
   cursor:pointer;
   background:#f9fafb;
   transition:.16s ease;
 }
 body.dark .item{
-  background:#020617;
+  background:#050317;
 }
 .item:hover{
   background:#ffffff;
   border-color:var(--accent);
-  box-shadow:0 10px 20px rgba(148,163,184,.35);
+  box-shadow:0 14px 24px rgba(148,163,184,.35);
 }
 body.dark .item:hover{
   background:var(--bg-soft);
@@ -221,9 +225,9 @@ body.dark .item:hover{
 /* toast / banner / dialogs */
 .toast{
   position:fixed;
-  right:16px;
-  bottom:76px;
-  background:#020617;
+  right:18px;
+  bottom:82px;
+  background:#111827;
   border:1px solid rgba(148,163,184,.85);
   color:#f9fafb;
   padding:8px 12px;
@@ -239,8 +243,8 @@ body.dark .item:hover{
   position:absolute;
   left:50%;
   transform:translateX(-50%);
-  top:68px;
-  background:#020617;
+  top:72px;
+  background:#111827;
   border:1px solid rgba(148,163,184,.8);
   color:#e5e7eb;
   padding:6px 11px;
@@ -261,7 +265,7 @@ body.dark .item:hover{
 .dialog{
   background:var(--panel-2);
   border:1px solid var(--border);
-  border-radius:20px;
+  border-radius:22px;
   padding:16px;
   width:min(420px,90vw);
   box-shadow:0 26px 70px rgba(15,23,42,.7);
@@ -274,13 +278,13 @@ body.dark .item:hover{
   flex:1;
   height:8px;
   border-radius:999px;
-  background:#eef2ff;
-  border:1px solid #e0e7ff;
+  background:#ede9fe;
+  border:1px solid #ddd6fe;
   overflow:hidden;
 }
 body.dark .progress-bar{
-  background:#020617;
-  border-color:#1f2937;
+  background:#050317;
+  border-color:#262b4c;
 }
 .progress-fill{
   height:100%;
@@ -294,19 +298,19 @@ body.dark .progress-bar{
 }
 .quick-filters button{
   padding:8px 0;
-  border-radius:16px;
+  border-radius:18px;
   border:1px solid var(--chip-br);
-  background:#f3f4f6;
+  background:#f9fafb;
   cursor:pointer;
   font-size:12px;
 }
 body.dark .quick-filters button{
-  background:#020617;
+  background:#050317;
 }
 .quick-filters button.active{
   border-color:var(--accent);
   background:var(--accent-soft);
-  box-shadow:0 0 0 1px rgba(56,189,248,.3);
+  box-shadow:0 0 0 1px rgba(139,92,246,.3);
 }
 
 /* finder overlay */
@@ -315,7 +319,7 @@ body.dark .quick-filters button{
   inset:0;
   display:none;
   z-index:1400;
-  background:radial-gradient(1200px 1200px at 50% -200px,#020617,#0f172a 70%,#020617);
+  background:radial-gradient(1200px 1200px at 50% -200px,#050317,#111827 70%,#02010b);
   align-items:center;
   justify-content:center;
   flex-direction:column;
@@ -352,17 +356,17 @@ body.dark .quick-filters button{
   margin-top:10px;
 }
 .level-card{
-  border-radius:18px;
+  border-radius:20px;
   border:1px solid var(--border);
-  background:linear-gradient(145deg,#f9fafb,#eef2ff);
+  background:linear-gradient(145deg,#fdfcff,#efe9ff);
   padding:10px;
   cursor:pointer;
   text-align:left;
   transition:.16s ease;
-  box-shadow:0 10px 24px rgba(148,163,184,.4);
+  box-shadow:0 12px 26px rgba(148,163,184,.35);
 }
 body.dark .level-card{
-  background:linear-gradient(145deg,#020b1f,#020617);
+  background:linear-gradient(145deg,#0b0b2b,#050317);
 }
 .level-card:hover{
   transform:translateY(-2px);
@@ -376,8 +380,8 @@ body.dark .level-card{
   width:32px;
   height:32px;
   border-radius:14px;
-  background:#0ea5e9;
-  color:#f9fafb;
+  background:var(--accent);
+  color:#fdfcff;
   font-weight:700;
   margin-bottom:6px;
 }
@@ -396,20 +400,23 @@ body.dark .level-card{
   left:50%;
   bottom:18px;
   transform:translateX(-50%);
-  background:#020617;
+  background:#111827;
   border-radius:999px;
   padding:6px;
   display:flex;
   gap:6px;
-  box-shadow:0 22px 45px rgba(0,0,0,.9);
+  box-shadow:0 24px 50px rgba(15,23,42,.9);
   z-index:1300;
+}
+body.dark .bottom-nav{
+  background:#02010b;
 }
 .bottom-nav .nav-btn{
   border:none;
   background:transparent;
-  color:#9ca3af;
+  color:#e5e7eb;
   border-radius:999px;
-  padding:8px 14px;
+  padding:9px 14px;
   display:flex;
   align-items:center;
   gap:6px;
@@ -421,15 +428,12 @@ body.dark .level-card{
   font-size:16px;
 }
 .bottom-nav .nav-btn.active{
-  background:#f9fafb;
-  color:#020617;
-}
-body.dark .bottom-nav{
-  background:#020617;
+  background:#fdfcff;
+  color:#111827;
 }
 body.dark .bottom-nav .nav-btn.active{
-  background:#e5e7eb;
-  color:#020617;
+  background:#fdfcff;
+  color:#111827;
 }
 
 /* ---------- Home page ---------- */
@@ -444,22 +448,22 @@ body.dark .bottom-nav .nav-btn.active{
 }
 .home-stats-grid{
   display:grid;
-  grid-template-columns:repeat(auto-fit,minmax(150px,1fr));
+  grid-template-columns:repeat(auto-fit,minmax(160px,1fr));
   gap:10px;
   margin:12px 0 8px 0;
 }
 .home-stat-card{
-  border-radius:18px;
+  border-radius:20px;
   border:1px solid var(--border);
   background:var(--panel-2);
-  padding:10px 12px;
-  box-shadow:0 10px 25px rgba(15,23,42,.2);
+  padding:12px 13px;
+  box-shadow:0 15px 28px rgba(148,163,184,.22);
   cursor:pointer;
   transition:.16s ease;
 }
 .home-stat-card:hover{
   transform:translateY(-2px);
-  box-shadow:0 18px 32px rgba(15,23,42,.4);
+  box-shadow:0 20px 34px rgba(148,163,184,.4);
 }
 .home-stat-card.active{
   border-color:var(--accent);
@@ -472,7 +476,7 @@ body.dark .bottom-nav .nav-btn.active{
   color:var(--muted);
 }
 .home-stat-value{
-  font-size:20px;
+  font-size:22px;
   font-weight:800;
   margin-top:4px;
 }
@@ -484,9 +488,9 @@ body.dark .bottom-nav .nav-btn.active{
 
 /* Home beacon list */
 #homeBeaconList .home-item{
-  border-radius:16px;
+  border-radius:18px;
   border:1px solid var(--chip-br);
-  padding:9px 11px;
+  padding:10px 12px;
   background:#f9fafb;
   cursor:pointer;
   display:flex;
@@ -494,12 +498,12 @@ body.dark .bottom-nav .nav-btn.active{
   gap:2px;
 }
 body.dark #homeBeaconList .home-item{
-  background:#020617;
+  background:#050317;
 }
 
-/* ---------- Detail page ---------- */
+/* ---------- Detail page (food-cart style) ---------- */
 .detail-layout{
-  max-width:640px;
+  max-width:480px;
   margin:0 auto;
 }
 .detail-header-row{
@@ -510,14 +514,14 @@ body.dark #homeBeaconList .home-item{
 }
 .detail-back{
   border-radius:999px;
-  padding:6px 10px;
+  padding:7px 12px;
   display:flex;
   align-items:center;
   gap:6px;
   font-size:13px;
 }
 .detail-title{
-  font-size:18px;
+  font-size:20px;
   font-weight:800;
 }
 .detail-sub{
@@ -526,13 +530,13 @@ body.dark #homeBeaconList .home-item{
 }
 .detail-grid{
   display:grid;
-  grid-template-columns:110px 1fr;
+  grid-template-columns:120px 1fr;
   gap:6px 10px;
   font-size:14px;
   margin-top:10px;
 }
 .detail-actions{
-  margin-top:16px;
+  margin-top:18px;
   display:flex;
   gap:10px;
 }
@@ -569,7 +573,7 @@ body.dark #homeBeaconList .home-item{
   transition:.2s;
 }
 .switch input:checked + .slider{
-  background:#4b5563;
+  background:#6366f1;
 }
 .switch input:checked + .slider:before{
   transform:translateX(18px);
@@ -590,7 +594,7 @@ body.dark #homeBeaconList .home-item{
   <h1>Terminal Map</h1>
   <input id="search" placeholder="Search beacon…" />
 
-  <!-- viewMode used by logic; hidden with CSS -->
+  <!-- viewMode still used by JS, hidden in CSS -->
   <select id="viewMode">
     <option value="beacon">Beacons</option>
     <option value="gateway">Gateways</option>
@@ -749,7 +753,7 @@ body.dark #homeBeaconList .home-item{
   </div>
 </div>
 
-<!-- ---------- DETAILS PAGE (full screen) ---------- -->
+<!-- ---------- FULL DETAIL PAGE (cart style) ---------- -->
 <div id="page-detail" class="page">
   <div class="detail-layout">
     <div class="card">
@@ -760,7 +764,7 @@ body.dark #homeBeaconList .home-item{
         <span class="pill" id="h_zone">—</span>
       </div>
 
-      <div style="margin-top:10px;">
+      <div style="margin-top:12px;">
         <div class="detail-title" id="h_name">—</div>
         <div class="detail-sub">ID: <span id="h_id">—</span></div>
       </div>
@@ -785,20 +789,16 @@ body.dark #homeBeaconList .home-item{
 <!-- ---------- Bottom navigation ---------- -->
 <div class="bottom-nav" id="bottomNav">
   <button class="nav-btn active" data-page="home">
-    <span class="icon">🏠</span>
-    <span>Home</span>
+    <span class="icon">🏠</span><span>Home</span>
   </button>
   <button class="nav-btn" data-page="map">
-    <span class="icon">🗺️</span>
-    <span>Map</span>
+    <span class="icon">🗺️</span><span>Map</span>
   </button>
   <button class="nav-btn" data-page="add">
-    <span class="icon">＋</span>
-    <span>Add</span>
+    <span class="icon">＋</span><span>Add</span>
   </button>
   <button class="nav-btn" data-page="settings">
-    <span class="icon">⚙️</span>
-    <span>Settings</span>
+    <span class="icon">⚙️</span><span>Settings</span>
   </button>
 </div>
 
@@ -903,8 +903,8 @@ body.dark #homeBeaconList .home-item{
 
 <script>
 /* ---------- Config ---------- */
-const API_URL = "/api/beacons";          
-const ENABLE_POST = false;               
+const API_URL = "/api/beacons";
+const ENABLE_POST = false;
 const AUTO_REFRESH_MS = 10000;
 
 /* ---------- uibuilder ---------- */
@@ -914,7 +914,9 @@ if (window.uibuilder) ui = window.uibuilder;
 /* ---------- Map ---------- */
 const TP_CENTER = [1.3455, 103.9323];
 const map = L.map("map").setView(TP_CENTER, 17);
-L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19, attribution: "&copy; OSM" }).addTo(map);
+L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+  maxZoom: 19, attribution: "&copy; OSM"
+}).addTo(map);
 const clusters = L.markerClusterGroup({ disableClusteringAtZoom: 19 });
 map.addLayer(clusters);
 
@@ -935,8 +937,8 @@ let beacons = [];
 const idToMarker = new Map();
 let searchText = "";
 let zoneFilter = "";
-let viewMode = "beacon";      // global type mode for map
-let homeViewType = "beacon";  // home summary mode
+let viewMode = "beacon";      // map view
+let homeViewType = "beacon";  // home summary
 let placementMode = false;
 let pendingBeacon = null;
 let selectedId = null;
@@ -958,7 +960,6 @@ function setActivePage(page){
   document.querySelectorAll("#bottomNav .nav-btn").forEach(btn=>{
     btn.classList.toggle("active", btn.dataset.page === page);
   });
-
   if(page === "map"){
     setTimeout(()=>{ map.invalidateSize(); }, 200);
   }
@@ -970,7 +971,9 @@ function zoneMatches(b){
   return String(b.zone||"").toLowerCase() === zoneFilter.toLowerCase();
 }
 function escapeH(s){
-  return String(s ?? "").replace(/[&<>"']/g, m => ({"&":"&amp;","<":"&lt;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[m] || ""));
+  return String(s ?? "").replace(/[&<>"']/g, m => ({
+    "&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"
+  }[m] || ""));
 }
 function popupHtml(b){
   return `<b>${escapeH(b.name)}</b> <span class="pill">${escapeH(b.zone)}</span><br><small>ID:${escapeH(b.id)}</small>`;
@@ -994,7 +997,8 @@ const toDeg = r => r * 180 / Math.PI;
 function haversine(aLat,aLng,bLat,bLng){
   const R = 6371000;
   const dLat = toRad(bLat-aLat), dLng = toRad(bLng-aLng);
-  const s = Math.sin(dLat/2)**2 + Math.cos(toRad(aLat))*Math.cos(toRad(bLat))*Math.sin(dLng/2)**2;
+  const s = Math.sin(dLat/2)**2 +
+            Math.cos(toRad(aLat))*Math.cos(toRad(bLat))*Math.sin(dLng/2)**2;
   return 2 * R * Math.asin(Math.sqrt(s));
 }
 function bearingBetween(aLat,aLng,bLat,bLng){
@@ -1006,7 +1010,7 @@ function bearingBetween(aLat,aLng,bLat,bLng){
 
 /* ---------- Map details ---------- */
 function showDetails(b){
-  selectedId = b.id; 
+  selectedId = b.id;
   selectedBeacon = b;
   document.getElementById("detailsEmpty").style.display = "none";
   const d = document.getElementById("details");
@@ -1016,9 +1020,10 @@ function showDetails(b){
   d.querySelector("#d_zone").textContent = b.zone || "—";
   d.querySelector("#d_gateway").textContent = b.gatewayId || "—";
   d.querySelector("#d_updated").textContent = b.lastUpdate || "—";
-  d.querySelector("#d_coords").textContent = (b.lat!=null && b.lng!=null)
-    ? `${(+b.lat).toFixed(5)}, ${(+b.lng).toFixed(5)}`
-    : "—";
+  d.querySelector("#d_coords").textContent =
+    (b.lat!=null && b.lng!=null)
+      ? `${(+b.lat).toFixed(5)}, ${(+b.lng).toFixed(5)}`
+      : "—";
 }
 
 /* ---------- Full-screen detail page ---------- */
@@ -1029,14 +1034,14 @@ function openDetailPage(b){
   document.getElementById("h_zone").textContent = b.zone || "—";
   document.getElementById("h_gateway").textContent = b.gatewayId || "—";
   document.getElementById("h_updated").textContent = b.lastUpdate || "—";
-  document.getElementById("h_coords").textContent = (b.lat!=null && b.lng!=null)
-    ? `${(+b.lat).toFixed(5)}, ${(+b.lng).toFixed(5)}`
-    : "—";
-  document.getElementById("h_type").textContent = (b.type || "beacon") === "gateway" ? "Gateway" : "Beacon";
+  document.getElementById("h_coords").textContent =
+    (b.lat!=null && b.lng!=null)
+      ? `${(+b.lat).toFixed(5)}, ${(+b.lng).toFixed(5)}`
+      : "—";
+  document.getElementById("h_type").textContent =
+    (b.type || "beacon") === "gateway" ? "Gateway" : "Beacon";
   setActivePage("detail");
 }
-
-/* nav from detail */
 document.getElementById("detailBack").onclick = () => setActivePage("home");
 document.getElementById("detailClose").onclick = () => setActivePage("home");
 document.getElementById("detailFind").onclick = () => {
@@ -1057,11 +1062,15 @@ document.getElementById("detailFind").onclick = () => {
 
 /* ---------- Delete (Firebase) ---------- */
 const confirmBox = document.getElementById("confirm");
-document.getElementById("c_cancel").onclick = () => confirmBox.style.display = "none";
-document.getElementById("btnDelete").onclick = () => { if(!selectedId) return; confirmBox.style.display = "flex"; };
+document.getElementById("c_cancel").onclick = () =>
+  confirmBox.style.display = "none";
+document.getElementById("btnDelete").onclick = () => {
+  if(!selectedId) return;
+  confirmBox.style.display = "flex";
+};
 document.getElementById("c_ok").onclick = async () => {
-  const id = selectedId; 
-  confirmBox.style.display = "none"; 
+  const id = selectedId;
+  confirmBox.style.display = "none";
   if(!id) return;
 
   try{
@@ -1082,7 +1091,9 @@ document.getElementById("c_ok").onclick = async () => {
 
 /* ---------- Stats (map + home) ---------- */
 function renderStats(){
-  const total = beacons.filter(b => (b.type || "beacon") === viewMode && zoneMatches(b)).length;
+  const total = beacons
+    .filter(b => (b.type || "beacon") === viewMode && zoneMatches(b))
+    .length;
   document.getElementById("totalCount").textContent = total;
 
   const counts = {"Zone A":0,"Zone B":0,"Zone C":0};
@@ -1092,44 +1103,51 @@ function renderStats(){
     if (counts[b.zone] !== undefined) counts[b.zone]++;
   });
   const max = Math.max(1, ...Object.values(counts));
-  const zEl = document.getElementById("zoneProgress"); 
+  const zEl = document.getElementById("zoneProgress");
   zEl.innerHTML = "";
   Object.entries(counts).forEach(([label,val])=>{
-    const row = document.createElement("div"); 
+    const row = document.createElement("div");
     row.className = "progress-row";
     row.innerHTML =
       `<div class="progress-label">${label}</div>
-       <div class="progress-bar"><div class="progress-fill" style="width:${(val/max)*100}%"></div></div>
+       <div class="progress-bar">
+         <div class="progress-fill" style="width:${(val/max)*100}%"></div>
+       </div>
        <div class="small" style="width:34px;text-align:right">${val}</div>`;
     zEl.appendChild(row);
   });
 
-  document.getElementById("activeZonePill").textContent = zoneFilter || "All zones";
-  document.getElementById("activeModeLabel").textContent = "Showing: " + (viewMode === "gateway" ? "Gateways" : "Beacons");
+  document.getElementById("activeZonePill").textContent =
+    zoneFilter || "All zones";
+  document.getElementById("activeModeLabel").textContent =
+    "Showing: " + (viewMode === "gateway" ? "Gateways" : "Beacons");
 
-  // Home stats filtered by zone
+  // Home stats with zone filter
   const zoneFiltered = beacons.filter(zoneMatches);
-  const totalBeacons = zoneFiltered.filter(b => (b.type || "beacon") === "beacon").length;
-  const totalGateways = zoneFiltered.filter(b => (b.type || "beacon") === "gateway").length;
+  const totalBeacons =
+    zoneFiltered.filter(b => (b.type || "beacon") === "beacon").length;
+  const totalGateways =
+    zoneFiltered.filter(b => (b.type || "beacon") === "gateway").length;
   document.getElementById("statBeaconCount").textContent = totalBeacons;
   document.getElementById("statGatewayCount").textContent = totalGateways;
   const zonesWithActivity = new Set(beacons.map(b=>b.zone).filter(Boolean));
-  document.getElementById("statZoneCount").textContent = zonesWithActivity.size;
+  document.getElementById("statZoneCount").textContent =
+    zonesWithActivity.size;
 }
 
-/* ---------- Markers & Lists ---------- */
+/* ---------- Markers & lists ---------- */
 function renderMarkers(){
-  clusters.clearLayers(); 
+  clusters.clearLayers();
   idToMarker.clear();
   beacons.forEach(b=>{
     if(!fits(b) || b.lat == null || b.lng == null) return;
-    const color = (b.type || "beacon") === "gateway" ? "#22c55e" : "#0ea5e9";
+    const color = (b.type || "beacon") === "gateway" ? "#22c55e" : "#8b5cf6";
     const m = L.circleMarker([b.lat,b.lng],{
       radius:8,color,fillColor:color,fillOpacity:.95,weight:2
     })
       .on("click",()=>{ showDetails(b); m.openPopup(); })
       .bindPopup(popupHtml(b));
-    idToMarker.set(b.id,m); 
+    idToMarker.set(b.id,m);
     clusters.addLayer(m);
   });
 }
@@ -1138,9 +1156,12 @@ function renderOverview(){
   const emptyEl = document.getElementById("overviewEmpty");
   const zoneLine = document.getElementById("overviewZoneLine");
   listEl.innerHTML = "";
-  const filtered = beacons.filter(fits).sort((a,b)=>String(a.name).localeCompare(String(b.name)));
+  const filtered = beacons
+    .filter(fits)
+    .sort((a,b)=>String(a.name).localeCompare(String(b.name)));
   zoneLine.textContent = zoneFilter ? `Zone: ${zoneFilter}` : "All zones";
-  document.getElementById("overviewCount").textContent = `${filtered.length} shown`;
+  document.getElementById("overviewCount").textContent =
+    `${filtered.length} shown`;
 
   if(filtered.length===0){
     emptyEl.style.display = "block";
@@ -1149,15 +1170,18 @@ function renderOverview(){
   emptyEl.style.display = "none";
 
   filtered.forEach(b=>{
-    const div = document.createElement("div"); 
+    const div = document.createElement("div");
     div.className = "item";
     div.innerHTML =
       `<div class="row">
-         <div><b>${escapeH(b.name||"Beacon")}</b> <span class="pill">${escapeH(b.zone||"-")}</span></div>
+         <div><b>${escapeH(b.name||"Beacon")}</b>
+           <span class="pill">${escapeH(b.zone||"-")}</span></div>
          <div class="small muted">${escapeH(b.id||"-")}</div>
        </div>
        <div class="small muted">
-         ${(b.lat!=null&&b.lng!=null)?`${(+b.lat).toFixed(5)}, ${(+b.lng).toFixed(5)}`:"—"} · ${escapeH(b.lastUpdate||"—")}
+         ${(b.lat!=null&&b.lng!=null)
+           ?`${(+b.lat).toFixed(5)}, ${(+b.lng).toFixed(5)}`
+           :"—"} · ${escapeH(b.lastUpdate||"—")}
        </div>`;
     div.onclick = ()=>{
       const m = idToMarker.get(b.id);
@@ -1168,20 +1192,21 @@ function renderOverview(){
   });
 }
 
-/* ---------- Home list (zone + type aware) ---------- */
+/* ---------- Home list ---------- */
 function renderHome(){
   const listEl = document.getElementById("homeBeaconList");
   const emptyEl = document.getElementById("homeEmpty");
-  if(!listEl) return;
   listEl.innerHTML = "";
 
   const typeFilter = homeViewType;
   const filtered = beacons
     .filter(b => zoneMatches(b) && (b.type || "beacon") === typeFilter)
-    .sort((a,b)=>String(b.lastUpdate||"").localeCompare(String(a.lastUpdate||"")))
+    .sort((a,b)=>String(b.lastUpdate||"")
+      .localeCompare(String(a.lastUpdate||"")))
     .slice(0,6);
 
-  document.getElementById("homeBeaconCounter").textContent = `${filtered.length} items`;
+  document.getElementById("homeBeaconCounter").textContent =
+    `${filtered.length} items`;
   document.getElementById("homeModeLabel").textContent =
     typeFilter === "gateway" ? "gateways" : "trolleys (beacons)";
 
@@ -1203,7 +1228,9 @@ function renderHome(){
          <span class="pill small">${escapeH(b.zone || "-")}</span>
        </div>
        <div class="small muted">
-         ${(b.lat!=null&&b.lng!=null)?`${(+b.lat).toFixed(5)}, ${(+b.lng).toFixed(5)}`:"—"} · ${escapeH(b.lastUpdate||"—")}
+         ${(b.lat!=null&&b.lng!=null)
+           ?`${(+b.lat).toFixed(5)}, ${(+b.lng).toFixed(5)}`
+           :"—"} · ${escapeH(b.lastUpdate||"—")}
        </div>`;
     div.onclick = ()=>openDetailPage(b);
     listEl.appendChild(div);
@@ -1217,7 +1244,7 @@ function render(){
   renderHome();
 }
 
-/* ---------- Helpers to set modes ---------- */
+/* ---------- Mode helpers ---------- */
 function setViewMode(mode){
   viewMode = mode;
   const sel = document.getElementById("viewMode");
@@ -1226,12 +1253,14 @@ function setViewMode(mode){
 }
 function setHomeViewType(type){
   homeViewType = type;
-  document.getElementById("statCardBeacons").classList.toggle("active", type==="beacon");
-  document.getElementById("statCardGateways").classList.toggle("active", type==="gateway");
+  document.getElementById("statCardBeacons")
+    .classList.toggle("active", type==="beacon");
+  document.getElementById("statCardGateways")
+    .classList.toggle("active", type==="gateway");
   renderHome();
 }
 
-/* ---------- Data fetch (optional REST) ---------- */
+/* ---------- REST fallback (optional) ---------- */
 async function fetchBeacons(){
   try{
     const r = await fetch(API_URL);
@@ -1261,19 +1290,16 @@ document.getElementById("zoneFilter").onchange = e=>{
   zoneFilter = e.target.value.trim();
   render();
 };
-
 document.getElementById("viewMode").onchange = e=>{
   setViewMode(e.target.value);
 };
 
-/* bottom nav */
 document.getElementById("bottomNav").addEventListener("click", e=>{
   const btn = e.target.closest(".nav-btn");
   if(!btn) return;
   setActivePage(btn.dataset.page);
 });
 
-/* quick filters */
 document.querySelectorAll(".quick-filters").forEach(group=>{
   group.addEventListener("click",e=>{
     const btn = e.target.closest(".zf");
@@ -1284,15 +1310,19 @@ document.querySelectorAll(".quick-filters").forEach(group=>{
   });
 });
 
-/* Home overview cards -> toggle type only */
-document.getElementById("statCardBeacons").onclick = () => setHomeViewType("beacon");
-document.getElementById("statCardGateways").onclick = () => setHomeViewType("gateway");
+/* Home stat cards toggle */
+document.getElementById("statCardBeacons").onclick =
+  () => setHomeViewType("beacon");
+document.getElementById("statCardGateways").onclick =
+  () => setHomeViewType("gateway");
 
-/* Add Beacon modal */
+/* Add beacon modal */
 const modal = document.getElementById("modalBackdrop");
 const banner = document.getElementById("placementBanner");
-document.getElementById("addBtn").onclick = () => { modal.style.display = "flex"; };
-document.getElementById("m_cancel").onclick = () => { modal.style.display = "none"; };
+document.getElementById("addBtn").onclick =
+  () => { modal.style.display = "flex"; };
+document.getElementById("m_cancel").onclick =
+  () => { modal.style.display = "none"; };
 document.getElementById("m_continue").onclick = () => {
   const zoneId = document.getElementById("m_zoneId").value.trim();
   const trolleyId = document.getElementById("m_trolleyId").value.trim();
@@ -1317,8 +1347,10 @@ window.onkeydown = e => {
 
 /* Level modal */
 const levelModal = document.getElementById("levelModal");
-document.getElementById("levelBtn").onclick = () => { levelModal.style.display = "flex"; };
-document.getElementById("levelClose").onclick = () => { levelModal.style.display = "none"; };
+document.getElementById("levelBtn").onclick =
+  () => { levelModal.style.display = "flex"; };
+document.getElementById("levelClose").onclick =
+  () => { levelModal.style.display = "none"; };
 document.querySelectorAll(".level-card").forEach(btn=>{
   btn.onclick = () => {
     const lvl = btn.dataset.level;
@@ -1494,8 +1526,9 @@ function startFinder(beacon){
     const [bLat,bLng] = targetLatLng;
     const dist = haversine(aLat,aLng,bLat,bLng);
     const bearing = bearingBetween(aLat,aLng,bLat,bLng);
-    const deviceHeading = (headingDeg!=null) ? headingDeg :
-      (Number.isFinite(heading) ? heading : null);
+    const deviceHeading = (headingDeg!=null)
+      ? headingDeg
+      : (Number.isFinite(heading) ? heading : null);
     const relative = (deviceHeading!=null)
       ? ((bearing - deviceHeading + 360) % 360)
       : bearing;
@@ -1520,12 +1553,15 @@ function startFinder(beacon){
       DeviceOrientationEvent.requestPermission()
         .then(state=>{
           if(state === "granted"){
-            window.addEventListener("deviceorientation",orientationHandler,true);
+            window.addEventListener("deviceorientation",
+                                    orientationHandler,true);
           }else{
-            findHintEl.textContent = "Compass permission denied; arrow uses map north.";
+            findHintEl.textContent =
+              "Compass permission denied; arrow uses map north.";
           }
         }).catch(()=>{
-          findHintEl.textContent = "Compass not available; arrow uses map north.";
+          findHintEl.textContent =
+            "Compass not available; arrow uses map north.";
         });
     }else{
       window.addEventListener("deviceorientation",orientationHandler,true);
@@ -1541,15 +1577,15 @@ function stopFinder(){
     watchId = null;
   }
   if(orientationHandler){
-    window.removeEventListener("deviceorientation",orientationHandler,true);
+    window.removeEventListener("deviceorientation",
+                               orientationHandler,true);
     orientationHandler = null;
   }
   headingDeg = null;
   targetLatLng = null;
 }
-document.getElementById("btnSearch").onclick = () => {
-  if(selectedBeacon) startFinder(selectedBeacon);
-};
+document.getElementById("btnSearch").onclick =
+  () => { if(selectedBeacon) startFinder(selectedBeacon); };
 document.getElementById("findExit").onclick = () => stopFinder();
 document.getElementById("findRecenter").onclick = () => {
   if(userMarker){ map.panTo(userMarker.getLatLng()); }
