@@ -1118,46 +1118,14 @@ function updateZoneCircle(zoneId){
   const center = zoneCenters[zoneId];
   const radiusMeters = FIXED_ZONE_RADIUS;
 
-  // No center = remove circle if it exists
   if(!center){
-    const existing = zoneCircles[zoneId];
-    if(existing && map.hasLayer(existing)) map.removeLayer(existing);
-    zoneCircles[zoneId] = null;
+    if(zoneCircles[zoneId]){
+      if(map.hasLayer(zoneCircles[zoneId])) map.removeLayer(zoneCircles[zoneId]);
+      zoneCircles[zoneId] = null;
+    }
     updateZoneCircleVisibilityBasedOnFilter();
     return;
   }
-
-  let circle = zoneCircles[zoneId];
-
-  // Create circle if missing
-  if(!circle){
-    circle = L.circle(center, {
-      radius: radiusMeters,
-      color: "#3b82f6",
-      weight: 2,
-      fillColor: "#3b82f6",
-      fillOpacity: 0.15
-    }).addTo(map);
-
-    // 🔵 Clicking the zone circle filters to that zone
-    circle.on("click", () => {
-      zoneFilter = zoneId;
-
-      const sel = document.getElementById("zoneFilter");
-      if (sel) sel.value = zoneId;
-
-      render();
-    });
-
-    zoneCircles[zoneId] = circle;
-  }else{
-    // Just update existing circle
-    circle.setLatLng(center);
-    circle.setRadius(radiusMeters);
-  }
-
-  updateZoneCircleVisibilityBasedOnFilter();
-}
 
   if(!zoneCircles[zoneId]){
     zoneCircles[zoneId] = L.circle(center, {
