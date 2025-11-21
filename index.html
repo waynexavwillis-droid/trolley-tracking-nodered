@@ -14,9 +14,6 @@
 <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css">
 <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
 
-<!-- uibuilder client -->
-<script src="/uibuilder/uibuilder.iife.min.js"></script>
-
 <!-- Firebase -->
 <script src="https://www.gstatic.com/firebasejs/11.0.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/11.0.1/firebase-database-compat.js"></script>
@@ -654,24 +651,46 @@ function renderList(){
 function renderMap(){
     clusters.clearLayers();
     idToMarker.clear();
+    
+    const zoneFilter = document.getElementById("zoneFilter").value;
+
     beacons.forEach(b => {
+        // 1. If global zone filter is active, check that
+        if(zoneFilter && b.zone !== zoneFilter) return;
+
+        // 2. VISUAL ISOLATION CHECK
+        // If a beacon is selected, ONLY show that specific beacon. 
+        // If it's not the selected one, skip adding it to the map.
+        if(selectedBeacon && b.id !== selectedBeacon.id) return;
+
         if(!b.lat || !b.lng) return;
         const m = L.circleMarker([b.lat, b.lng], {
             radius: 8, color: '#FF453A', fillColor: '#FF453A', fillOpacity: 0.9, weight: 2
         }).bindPopup(`<b>${b.id}</b><br>${b.zone}`);
-        m.on('click', () => selectBeacon(b));
+        
+        // Logic to select
+        m.on('click', (e) => {
+             L.DomEvent.stopPropagation(e); // Prevent map click event
+             selectBeacon(b);
+        });
+
         clusters.addLayer(m);
         idToMarker.set(b.id, m);
     });
+
+    // Render Zones (hide zones if we are in isolated "selected" mode to reduce clutter, optional)
     Object.keys(zoneCircles).forEach(k => map.removeLayer(zoneCircles[k]));
     zoneCircles = {};
-    const filter = document.getElementById("zoneFilter").value;
-    Object.keys(zones).forEach(zKey => {
-        if(filter && filter !== zKey) return;
-        zoneCircles[zKey] = L.circle(zones[zKey], {
-            radius: FIXED_ZONE_RADIUS, color: '#30d158', fillColor: '#30d158', fillOpacity: 0.1, weight: 1, dashArray: '5, 5'
-        }).addTo(map);
-    });
+    
+    // Only draw zones if no beacon is selected (to focus)
+    if(!selectedBeacon) {
+        Object.keys(zones).forEach(zKey => {
+            if(zoneFilter && zoneFilter !== zKey) return;
+            zoneCircles[zKey] = L.circle(zones[zKey], {
+                radius: FIXED_ZONE_RADIUS, color: '#30d158', fillColor: '#30d158', fillOpacity: 0.1, weight: 1, dashArray: '5, 5'
+            }).addTo(map);
+        });
+    }
 }
 
 function setupInteractions(){
@@ -707,21 +726,30 @@ function setupInteractions(){
         switchToMapAndGuide("Tap map to set zone center");
     };
 
+    // --- MAP BACKGROUND CLICK LOGIC ---
     map.on('click', e => {
-        if(!placementMode) return;
-        const { lat, lng } = e.latlng;
-        if(placementMode === 'beacon'){
-            firebase.database().ref(`/Tracking/${tempPayload.trolleyId}`).set({
-                ...tempPayload, latitude: lat, longitude: lng, timestamp: new Date().toISOString()
-            });
-            showToast("Beacon Added!");
-        } else if (placementMode === 'zone'){
-            firebase.database().ref(`/Zones/${tempPayload.zoneId}`).set({
-                zoneId: tempPayload.zoneId, centerLat: lat, centerLng: lng
-            });
-            showToast("Zone Created!");
+        // 1. Handle Placement Mode
+        if(placementMode){
+            const { lat, lng } = e.latlng;
+            if(placementMode === 'beacon'){
+                firebase.database().ref(`/Tracking/${tempPayload.trolleyId}`).set({
+                    ...tempPayload, latitude: lat, longitude: lng, timestamp: new Date().toISOString()
+                });
+                showToast("Beacon Added!");
+            } else if (placementMode === 'zone'){
+                firebase.database().ref(`/Zones/${tempPayload.zoneId}`).set({
+                    zoneId: tempPayload.zoneId, centerLat: lat, centerLng: lng
+                });
+                showToast("Zone Created!");
+            }
+            placementMode = null;
+            return;
         }
-        placementMode = null;
+
+        // 2. Handle Deselect (Cancel Effect)
+        if(selectedBeacon) {
+            deselectBeacon();
+        }
     });
 
     document.getElementById('mapSearch').oninput = (e) => {
@@ -730,11 +758,13 @@ function setupInteractions(){
         if(found) selectBeacon(found);
     };
     
-    document.getElementById('mc_close').onclick = () => document.getElementById('mapCard').style.transform = 'translateY(150%)';
+    // X button on card now also deselects/refreshes map
+    document.getElementById('mc_close').onclick = deselectBeacon;
+
     document.getElementById('mc_del').onclick = () => {
         if(confirm("Delete this beacon?")){
             firebase.database().ref(`/Tracking/${selectedBeacon.id}`).remove();
-            document.getElementById('mapCard').style.transform = 'translateY(150%)';
+            deselectBeacon();
         }
     };
     document.getElementById('mc_find').onclick = startCompass;
@@ -752,13 +782,29 @@ function viewOnMap(id){
         setTimeout(() => selectBeacon(b), 400);
     }
 }
+
 function selectBeacon(b){
     selectedBeacon = b;
+    // Center map on selected item
     map.flyTo([b.lat, b.lng], 18);
+    
+    // Show Card
     document.getElementById('mc_name').innerText = b.id;
     document.getElementById('mc_zone').innerText = b.zone || "No Zone";
     document.getElementById('mapCard').style.transform = 'translateY(0)';
+
+    // Trigger re-render to hide other dots
+    renderMap();
 }
+
+function deselectBeacon(){
+    selectedBeacon = null;
+    // Hide Card
+    document.getElementById('mapCard').style.transform = 'translateY(150%)';
+    // Trigger re-render to show ALL dots again
+    renderMap();
+}
+
 function closeModals(){ document.querySelectorAll('.modal-backdrop').forEach(m => m.style.display = 'none'); }
 function showToast(msg){
     const t = document.getElementById('toast');
@@ -796,6 +842,9 @@ document.getElementById('btnStopFind').onclick = () => {
     setTimeout(() => {
         overlay.style.display = 'none';
     }, 500); // Wait for transition
+
+    // When closing Compass, bring back the card (user is still technically selecting the trolley)
+    if(selectedBeacon) document.getElementById('mapCard').style.transform = 'translateY(0)';
 
     if(watchId) navigator.geolocation.clearWatch(watchId);
     window.removeEventListener('deviceorientation', processOrientation);
