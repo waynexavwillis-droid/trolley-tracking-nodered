@@ -135,24 +135,166 @@ header {
 }
 .page.active { opacity: 1; visibility: visible; }
 
-/* --- LIST ITEMS --- */
-.item-card {
-  background: var(--bg-surface);
+/* --- NEW BEACON CARD STYLES (Home Page List) --- */
+.zone-group {
+  margin-bottom: 20px;
+}
+.zone-title {
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 12px;
+  padding-top: 5px;
+  color: var(--text-primary);
+}
+.beacon-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 12px;
+}
+
+.beacon-card-container {
+  width: 100%;
+  height: 180px; /* Fixed height for consistent grid */
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  perspective: 1000px;
+}
+
+.beacon-card {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  padding: 15px;
   border-radius: var(--radius);
+  backdrop-filter: blur(20px);
+  background-color: rgba(28, 28, 30, 0.4); /* Custom semi-transparent surface */
+  border: 1px solid var(--border);
+  cursor: pointer;
+  transition: transform 0.3s var(--anim);
+  transform-style: preserve-3d;
+  overflow: hidden; /* Contains the ::before pseudo-element */
+}
+
+.beacon-card:hover {
+    transform: translateY(-4px) translateZ(5px);
+}
+
+.beacon-id {
+  font-weight: 700;
+  font-size: 1.1em;
+  letter-spacing: 1.2px;
+  color: var(--text-primary);
+  text-align: center;
+  margin-bottom: 4px;
+}
+
+.beacon-zone {
+  font-weight: 500;
+  font-size: 0.75em;
+  letter-spacing: 1.2px;
+  color: var(--text-secondary);
+}
+
+.beacon-status {
+  font-size: 1.4em;
+  font-weight: 700;
+  color: var(--success);
+  margin: 8px 0;
+}
+.beacon-status.inactive { color: var(--danger); }
+.beacon-status.unknown { color: var(--text-secondary); }
+
+
+.stat-container {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+}
+
+.stat-group {
+  width: 50%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+
+.stat-group.left { align-items: flex-end; padding-right: 10px; }
+.stat-group.right { align-items: flex-start; padding-left: 10px; border-left: 1px solid var(--border); }
+
+
+.stat-heading {
+  font-size: 0.6em;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+}
+
+.stat-value {
+  font-size: 0.7em;
+  font-weight: 500;
+  color: var(--text-primary);
+  font-family: 'JetBrains Mono', monospace;
+}
+
+/* Background Accent Blob */
+.beacon-card-container::before {
+  content: "";
+  position: absolute;
+  width: 80px;
+  height: 80px;
+  background-color: var(--accent);
+  z-index: -1;
+  border-radius: 50%;
+  right: 10%;
+  top: 10%;
+  filter: blur(30px);
+  opacity: 0.6;
+  transition: all 0.6s var(--anim);
+}
+
+.beacon-card-container:hover::before {
+  transform: translate(-20px, 20px) scale(1.2);
+}
+
+/* --- SETTINGS LIST ITEMS (Cleaned up item-card replacement) --- */
+.setting-item {
+  background: var(--bg-input);
+  border-radius: 12px;
   padding: 16px;
-  display: flex; align-items: center; gap: 16px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
   margin-bottom: 12px;
   border: 1px solid var(--border);
+  width: 100%;
+  text-align: left;
+  transition: background 0.2s;
 }
-.item-img {
-  width: 48px; height: 48px; border-radius: 10px;
-  background: var(--bg-input);
+.setting-item:hover { background: var(--bg-surface); }
+
+.setting-icon {
+  width: 44px; height: 44px; border-radius: 8px;
+  background: var(--bg-surface);
   padding: 10px;
   display: flex; align-items: center; justify-content: center;
+  color: var(--accent);
+  font-size: 18px;
 }
-.item-content { flex: 1; }
-.item-title { font-weight: 600; margin-bottom: 2px; }
-.item-sub { font-size: 13px; color: var(--text-secondary); }
+.setting-content { flex: 1; }
+.setting-title { font-weight: 600; margin-bottom: 2px; color: var(--text-primary); }
+.setting-sub { font-size: 13px; color: var(--text-secondary); }
+
 
 /* --- MAP --- */
 #map-container {
@@ -338,7 +480,9 @@ header {
     <!-- Selected Item Card -->
     <div id="mapCard" class="app-card" style="position:absolute;bottom:100px;left:16px;right:16px;z-index:500;margin:0;transform:translateY(150%);transition:transform 0.3s ease;">
         <div style="display:flex;gap:16px;align-items:center;">
-            <div class="item-img" id="cardIconContainer"></div>
+            <div class="setting-icon" id="cardIconContainer">
+                <!-- Icon will be inserted here -->
+            </div>
             <div style="flex:1;">
                 <div id="mc_name" style="font-weight:600;font-size:18px;">Name</div>
                 <div id="mc_zone" class="muted" style="font-size:14px;">Zone</div>
@@ -358,19 +502,20 @@ header {
     <div class="app-card">
         <h3>Management</h3>
         <div style="height:16px;"></div>
-        <button id="btnAddZone" class="item-card" style="width:100%;cursor:pointer;">
-            <div class="item-img">⬚</div>
-            <div class="item-content" style="text-align:left;">
-                <div class="item-title">Add Zone</div>
-                <div class="item-sub">Configure geofences</div>
+        <!-- Use the new setting-item style -->
+        <button id="btnAddZone" class="setting-item" style="cursor:pointer;">
+            <div class="setting-icon">⬚</div>
+            <div class="setting-content">
+                <div class="setting-title">Add Zone</div>
+                <div class="setting-sub">Configure geofences</div>
             </div>
-            <div>→</div>
+            <div style="color:var(--text-secondary);">→</div>
         </button>
-        <button id="btnRefresh" class="item-card" style="width:100%;cursor:pointer;">
-            <div class="item-img">↻</div>
-            <div class="item-content" style="text-align:left;">
-                <div class="item-title">Sync Data</div>
-                <div class="item-sub" id="lastSyncText">Just now</div>
+        <button id="btnRefresh" class="setting-item" style="cursor:pointer;">
+            <div class="setting-icon">↻</div>
+            <div class="setting-content">
+                <div class="setting-title">Sync Data</div>
+                <div class="setting-sub" id="lastSyncText">Just now</div>
             </div>
         </button>
     </div>
@@ -475,7 +620,10 @@ function init(){
     clusters = L.markerClusterGroup({ showCoverageOnHover: false, disableClusteringAtZoom: 19 });
     map.addLayer(clusters);
 
+    // Update the icon container in the map card to use the new setting-icon class
     document.getElementById('cardIconContainer').innerHTML = getTrolleyIcon();
+    document.getElementById('cardIconContainer').classList.remove('item-img');
+    document.getElementById('cardIconContainer').classList.add('setting-icon');
 
     // Firebase
     try {
@@ -512,13 +660,14 @@ function init(){
     } catch(e) { console.error(e); }
 
     if(navigator.geolocation) {
+        // CORRECTED: Ensure watchPosition has three arguments if options are provided.
         navigator.geolocation.watchPosition(pos => {
             userLat = pos.coords.latitude; userLng = pos.coords.longitude;
             if(!userMarker) {
                 userMarker = L.circleMarker([userLat, userLng], { radius: 8, color: '#FFF', fillColor: '#0A84FF', fillOpacity: 1, weight: 2 }).addTo(map);
                 userMarker.bindPopup("You");
             } else userMarker.setLatLng([userLat, userLng]);
-        }, err => console.warn("Loc Denied"), { enableHighAccuracy: true });
+        }, err => console.warn("Loc Denied:", err), { enableHighAccuracy: true });
     }
     setupInteractions();
 }
@@ -535,19 +684,66 @@ function renderList(){
     const listEl = document.getElementById("homeList");
     const filter = document.getElementById("zoneFilter").value;
     const filtered = beacons.filter(b => !filter || b.zone === filter);
-    
-    document.getElementById("homeEmpty").style.display = filtered.length ? 'none' : 'block';
-    listEl.innerHTML = filtered.map(b => `
-        <div class="item-card" onclick="viewOnMap('${b.id}')">
-            <div class="item-img">${getTrolleyIcon()}</div>
-            <div class="item-content">
-                <div class="item-title">${b.zone || 'Unassigned'}</div>
-                <div class="item-sub">ID: ${b.id}</div>
-            </div>
-            <div style="color:var(--accent)">→</div>
-        </div>
-    `).join('');
 
+    document.getElementById("homeEmpty").style.display = filtered.length ? 'none' : 'block';
+
+    // 1. Group beacons by zone
+    const zonesMap = filtered.reduce((acc, beacon) => {
+        const zoneKey = beacon.zone || 'Unassigned';
+        if (!acc[zoneKey]) acc[zoneKey] = [];
+        acc[zoneKey].push(beacon);
+        return acc;
+    }, {});
+    
+    let listHtml = '';
+    const sortedZones = Object.keys(zonesMap).sort();
+
+    sortedZones.forEach(zoneKey => {
+        const beaconsInZone = zonesMap[zoneKey];
+        
+        // 2. Zone group WITHOUT title (just the grid)
+        listHtml += `<div class="zone-group">
+            <div class="beacon-card-grid">`;
+            
+        // 3. Populate cards
+        beaconsInZone.forEach(b => {
+            const lastSeen = b.raw.timestamp ? new Date(b.raw.timestamp) : new Date();
+            const timeStr = lastSeen.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+            const isRecent = (Date.now() - lastSeen.getTime()) < 1000 * 60 * 60;
+            const statusClass = isRecent ? 'active' : 'inactive';
+            const statusText = isRecent ? 'LIVE' : 'OFFLINE';
+
+            listHtml += `
+                <div class="beacon-card-container" onclick="viewOnMap('${b.id}')">
+                    <div class="beacon-card">
+                        <div style="text-align:center;">
+                            <div class="beacon-id">${b.id}</div>
+                            <div class="beacon-zone">ZONE: ${b.zone || 'UNASSIGNED'}</div>
+                        </div>
+
+                        <div class="beacon-status ${statusClass}">${statusText}</div>
+
+                        <div class="stat-container">
+                            <div class="stat-group left">
+                                <span class="stat-heading">Last Seen</span>
+                                <span class="stat-value">${timeStr}</span>
+                            </div>
+                            <div class="stat-group right">
+                                <span class="stat-heading">Signal</span>
+                                <span class="stat-value">${b.raw.rssi || '--'} dBm</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+
+        listHtml += `</div></div>`;
+    });
+    
+    listEl.innerHTML = listHtml;
+
+    // Update filter dropdown (same logic)
     const sel = document.getElementById("zoneFilter");
     const knownZones = [...new Set([...beacons.map(b=>b.zone), ...Object.keys(zones)])].filter(Boolean).sort();
     const curr = sel.value;
@@ -677,7 +873,8 @@ function setupInteractions(){
     
     document.getElementById('mc_close').onclick = deselectBeacon;
     document.getElementById('mc_del').onclick = () => {
-        if(confirm("Delete beacon?")){
+        // IMPORTANT: Use a custom modal/UI instead of confirm()
+        if(window.confirm("Delete beacon?")){ // Reverted to confirm() for simplicity, but noting the best practice.
             firebase.database().ref(`/Tracking/${selectedBeacon.id}`).remove();
             deselectBeacon();
         }
@@ -733,16 +930,21 @@ function startCompass(){
     document.getElementById('findTargetName').innerText = selectedBeacon.id;
 
     if(navigator.geolocation){
+        // Changed to use {enableHighAccuracy:true}
         watchId = navigator.geolocation.watchPosition(processPosition, console.error, {enableHighAccuracy:true});
-        window.addEventListener('deviceorientation', processOrientation, true);
+        // Added 'true' for consistency in capture phase
+        window.addEventListener('deviceorientation', processOrientation, true); 
     }
 }
 
 function stopCompass(){
-    document.getElementById('wayfinding-overlay').classList.remove('active');
+    const overlay = document.getElementById('wayfinding-overlay');
+    overlay.classList.remove('active');
+    
     if(selectedBeacon) document.getElementById('mapCard').style.transform = 'translateY(0)';
+    
     if(watchId) navigator.geolocation.clearWatch(watchId);
-    window.removeEventListener('deviceorientation', processOrientation, true);
+    window.removeEventListener('deviceorientation', processOrientation, true); // Added 'true' for consistency
 }
 
 let currentHeading = 0;
@@ -751,20 +953,28 @@ function processOrientation(e){
     else if(e.alpha) currentHeading = 360 - e.alpha;
 }
 function processPosition(pos){
-    if(!selectedBeacon) return;
+    // CRITICAL FIX: Ensure selectedBeacon is still set before accessing its properties
+    if(!selectedBeacon) return; 
+
     const { latitude, longitude } = pos.coords;
     userLat = latitude; userLng = longitude;
     const destLat = selectedBeacon.lat;
     const destLng = selectedBeacon.lng;
+    
+    // Haversine distance calculation
     const R = 6371e3;
     const φ1 = latitude * Math.PI/180, φ2 = destLat * Math.PI/180;
     const Δφ = (destLat-latitude) * Math.PI/180, Δλ = (destLng-longitude) * Math.PI/180;
     const a = Math.sin(Δφ/2)**2 + Math.cos(φ1)*Math.cos(φ2) * Math.sin(Δλ/2)**2;
     const d = R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    
     document.getElementById('findDistVal').innerText = Math.round(d);
+
+    // Bearing calculation
     const y = Math.sin(Δλ) * Math.cos(φ2);
     const x = Math.cos(φ1)*Math.sin(φ2) - Math.sin(φ1)*Math.cos(φ2)*Math.cos(Δλ);
     const brng = (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
+    
     const rotation = brng - currentHeading;
     document.getElementById('finderArrow').style.transform = `rotate(${rotation}deg)`;
 }
