@@ -1,3 +1,4 @@
+
 <!doctype html>
 <html lang="en">
 <head>
@@ -380,23 +381,6 @@ header {
   border: 1px solid rgba(255,255,255,0.05);
 }
 
-/* Code Block for Raw Data (Bottom Card) */
-.raw-data-container {
-    background: #111;
-    padding: 12px;
-    border-radius: 12px;
-    font-family: monospace;
-    font-size: 11px;
-    color: #0f0;
-    max-height: 150px;
-    overflow-y: auto;
-    white-space: pre-wrap;
-    border: 1px solid #333;
-    margin-top: 10px;
-    display: none;
-}
-.raw-data-container.show { display: block; }
-
 /* Leaflet Tweaks */
 .leaflet-container { background: #121212 !important; }
 .leaflet-popup-content-wrapper { background: var(--bg-panel); color: white; border-radius: 12px; }
@@ -412,7 +396,6 @@ header {
     <h1 style="font-size:18px;">Trolley<span style="color:var(--accent)">Map</span></h1>
   </div>
   <div style="display:flex;gap:8px;">
-    <!-- REMOVED GLOBAL BLE BUTTON HERE AS REQUESTED -->
     <button id="hdr-add" class="btn-ghost" style="padding:8px 12px;">+ Add</button>
   </div>
 </header>
@@ -494,14 +477,8 @@ header {
         </div>
         <hr style="border:0;border-top:1px solid rgba(255,255,255,0.1);margin:12px 0;">
         <div style="display:flex;gap:10px;">
-            <!-- Renamed "Fly Details" to "Track" -->
             <button id="mc_find" class="btn-primary" style="flex:1;">Track</button>
-            <button id="mc_toggle_raw" class="btn-ghost" style="font-size:11px;">Tech Data</button>
             <button id="mc_del" class="btn-ghost" style="color:var(--danger);">Del</button>
-        </div>
-        <!-- Raw Data View -->
-        <div id="mc_raw_content" class="raw-data-container">
-            Scanning Firebase...
         </div>
     </div>
   </div>
@@ -962,11 +939,6 @@ function setupInteractions(){
         }
     };
 
-    document.getElementById('mc_toggle_raw').onclick = () => {
-        const el = document.getElementById('mc_raw_content');
-        el.classList.toggle('show');
-    };
-
     document.getElementById('mc_find').onclick = startCompass;
     document.getElementById('zoneFilter').onchange = updateUI;
 
@@ -999,9 +971,6 @@ function selectBeacon(b){
     document.getElementById('mc_name').innerText = b.id;
     document.getElementById('mc_zone').innerText = b.zone || "No Zone";
     
-    document.getElementById('mc_raw_content').innerText = JSON.stringify(b.raw, null, 2);
-    document.getElementById('mc_raw_content').classList.remove('show');
-
     document.getElementById('mapCard').style.transform = 'translateY(0)';
     renderMap();
 }
