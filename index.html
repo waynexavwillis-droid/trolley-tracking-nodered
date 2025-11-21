@@ -171,6 +171,29 @@ header {
 }
 #map { width: 100%; height: 100%; background: #121212; }
 
+/* --- Custom Tooltip Style --- */
+.custom-tooltip {
+    background: rgba(15, 15, 17, 0.95) !important;
+    border: 1px solid rgba(255, 255, 255, 0.15) !important;
+    color: #0f0 !important; /* Hacker Green Text */
+    border-radius: 8px !important;
+    padding: 10px !important;
+    font-family: 'Monaco', 'Consolas', monospace !important;
+    font-size: 11px !important;
+    box-shadow: 0 8px 30px rgba(0,0,0,0.6) !important;
+    white-space: pre !important; /* Keep JSON formatting */
+    z-index: 2000 !important;
+    opacity: 1 !important;
+    backdrop-filter: blur(8px);
+}
+/* Hide default tooltip arrow for cleaner look */
+.leaflet-tooltip-top:before,
+.leaflet-tooltip-bottom:before,
+.leaflet-tooltip-left:before,
+.leaflet-tooltip-right:before {
+    display: none !important;
+}
+
 /* --- Stats Grid --- */
 .stats-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 20px; }
 .stat-box {
@@ -707,8 +730,18 @@ function renderMap(){
         if(!b.lat || !b.lng) return;
         const m = L.circleMarker([b.lat, b.lng], {
             radius: 8, color: '#FF453A', fillColor: '#FF453A', fillOpacity: 0.9, weight: 2
-        }).bindPopup(`<b>${b.id}</b><br>${b.zone}`);
+        });
         
+        // 1. HOVER TOOLTIP LOGIC (RAW DATA POPOUT)
+        const rawJson = JSON.stringify(b.raw, null, 2).replace(/["{}]/g, '').trim();
+        m.bindTooltip(rawJson, {
+            direction: 'top',
+            className: 'custom-tooltip',
+            opacity: 1,
+            offset: [0, -10]
+        });
+        
+        // 2. CLICK LOGIC (BOTTOM CARD)
         m.on('click', (e) => {
              L.DomEvent.stopPropagation(e); 
              selectBeacon(b);
@@ -718,7 +751,7 @@ function renderMap(){
         idToMarker.set(b.id, m);
     });
 
-    // Re-add User Marker if it exists (clusters clear layers wipes it if not careful)
+    // Re-add User Marker if it exists
     if(userMarker) userMarker.addTo(map);
 
     Object.keys(zoneCircles).forEach(k => map.removeLayer(zoneCircles[k]));
@@ -736,8 +769,15 @@ function renderMap(){
 
 // --- BLE SCANNER LOGIC ---
 async function startBleScan() {
+    // CHECK 1: Secure Context
+    if (!window.isSecureContext) {
+        alert("Web Bluetooth Error:\nYour browser is not in a secure context (HTTPS or localhost).\n\nPlease host this file on a secure server or use localhost.");
+        return;
+    }
+
+    // CHECK 2: Browser Support
     if (!navigator.bluetooth) {
-        showToast("Web Bluetooth not supported in this browser.");
+        alert("Web Bluetooth Error:\nThis browser does not support Bluetooth scanning.\n\nCompatible Browsers:\n• Chrome/Edge on Desktop\n• Chrome on Android\n• 'Bluefy' App on iOS (Safari won't work)");
         return;
     }
 
@@ -746,8 +786,8 @@ async function startBleScan() {
         
         // 1. Open Native Picker
         const device = await navigator.bluetooth.requestDevice({
-            acceptAllDevices: true, // Scans for everything
-            optionalServices: [] // We don't strictly need services to just ID it
+            acceptAllDevices: true, 
+            optionalServices: [] 
         });
 
         // 2. Device Selected
@@ -780,11 +820,11 @@ async function startBleScan() {
         }
 
     } catch (error) {
-        console.log('Argh! ' + error);
+        console.log('BLE Error: ' + error);
         if(error.name === 'NotFoundError') {
             showToast("Scan cancelled.");
         } else {
-            showToast("Error: " + error.message);
+            alert("Scan Error: " + error.message);
         }
     }
 }
