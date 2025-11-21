@@ -35,6 +35,7 @@
   
   --accent: #F2994A; 
   --accent-grad: linear-gradient(135deg, #F2994A 0%, #F2C94C 100%);
+  --bluetooth: #007AFF;
   
   --danger: #ff453a;
   --glass: rgba(20, 20, 20, 0.65);
@@ -92,6 +93,13 @@ button:active { transform: scale(0.96); }
   padding: 10px 20px; border-radius: 100px;
   font-size: 13px; font-weight: 500;
 }
+.btn-blue {
+    background: var(--bluetooth); color: white;
+    padding: 8px 16px; border-radius: 100px;
+    font-size: 13px; font-weight: 600;
+    display: flex; align-items: center; gap: 6px;
+}
+
 .btn-icon {
   width: 44px; height: 44px; border-radius: 50%;
   background: var(--bg-card);
@@ -320,6 +328,23 @@ header {
   border: 1px solid rgba(255,255,255,0.05);
 }
 
+/* Code Block for Raw Data */
+.raw-data-container {
+    background: #111;
+    padding: 12px;
+    border-radius: 12px;
+    font-family: monospace;
+    font-size: 11px;
+    color: #0f0;
+    max-height: 150px;
+    overflow-y: auto;
+    white-space: pre-wrap;
+    border: 1px solid #333;
+    margin-top: 10px;
+    display: none;
+}
+.raw-data-container.show { display: block; }
+
 /* Leaflet Tweaks */
 .leaflet-container { background: #121212 !important; }
 .leaflet-popup-content-wrapper { background: var(--bg-panel); color: white; border-radius: 12px; }
@@ -335,29 +360,26 @@ header {
     <h1 style="font-size:18px;">Trolley<span style="color:var(--accent)">Map</span></h1>
   </div>
   <div style="display:flex;gap:8px;">
+    <!-- NEW: Bluetooth Scan Button -->
+    <button id="hdr-ble" class="btn-blue">
+        <span style="font-size:16px;">📡</span> Scan BLE
+    </button>
     <button id="hdr-add" class="btn-ghost" style="padding:8px 12px;">+ Add</button>
-    <div style="width:32px;height:32px;border-radius:50%;background:#333;overflow:hidden;">
-       <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Felix" width="32" height="32" alt="User">
-    </div>
   </div>
 </header>
 
 <!-- TROLLEY ICON TEMPLATE (Red Handle) -->
 <template id="tpl-icon">
     <svg class="trolley-icon-svg" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <!-- Handle (Red) -->
         <path d="M19 5H21" stroke="#FF453A" stroke-width="2.5" stroke-linecap="round"/>
         <path d="M16 5H19L18.5 7" stroke="#FF453A" stroke-width="2.5" stroke-linecap="round"/>
-        <!-- Basket (Wireframe Dark) -->
         <path d="M4 6h14l-1.5 9h-11L4 6z" stroke="#E0E0E0" stroke-width="1.5"/>
         <path d="M5.5 9h11" stroke="#E0E0E0" stroke-width="1" stroke-opacity="0.5"/>
         <path d="M5 12h10" stroke="#E0E0E0" stroke-width="1" stroke-opacity="0.5"/>
         <path d="M8 6v9" stroke="#E0E0E0" stroke-width="1" stroke-opacity="0.5"/>
         <path d="M11 6v9" stroke="#E0E0E0" stroke-width="1" stroke-opacity="0.5"/>
         <path d="M14 6v9" stroke="#E0E0E0" stroke-width="1" stroke-opacity="0.5"/>
-        <!-- Frame -->
         <path d="M1 2h3l3.5 16h11" stroke="#E0E0E0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-        <!-- Wheels -->
         <circle cx="8" cy="20" r="1.5" fill="#888"/>
         <circle cx="17" cy="20" r="1.5" fill="#888"/>
     </svg>
@@ -365,7 +387,6 @@ header {
 
 <!-- 1. HOME PAGE -->
 <div id="page-home" class="page active">
-  <!-- Hero Stats -->
   <div class="app-card">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
       <h3>Overview</h3>
@@ -383,7 +404,6 @@ header {
       </div>
     </div>
 
-    <!-- Filter -->
     <div style="position:relative;">
         <select id="zoneFilter">
             <option value="">All Zones</option>
@@ -392,13 +412,11 @@ header {
     </div>
   </div>
 
-  <!-- List Header -->
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;padding:0 4px;">
     <h3 style="font-size:18px;">Recent Trolleys</h3>
     <span class="small muted" id="listCount">0 items</span>
   </div>
 
-  <!-- Trolley List -->
   <div id="homeList" class="list-grid"></div>
   <div id="homeEmpty" class="muted small" style="text-align:center;padding:20px;">No trolleys found.</div>
 </div>
@@ -408,14 +426,13 @@ header {
   <div id="map-container">
     <div id="map"></div>
     
-    <!-- Floating Map Controls -->
     <div style="position:absolute;top:80px;left:20px;right:20px;z-index:500;display:flex;gap:8px;">
       <input id="mapSearch" placeholder="Search ID or Zone..." style="background:rgba(28,28,30,0.9);backdrop-filter:blur(10px);box-shadow:0 8px 20px rgba(0,0,0,0.3);">
       <button id="mapRecenter" class="btn-icon" style="background:rgba(28,28,30,0.9);color:var(--accent);flex-shrink:0;">⌖</button>
     </div>
 
-    <!-- Selected Beacon Card (Small) -->
-    <div id="mapCard" class="app-card" style="position:absolute;bottom:100px;left:20px;right:20px;z-index:500;margin:0;transform:translateY(150%);transition:transform 0.4s ease;background:rgba(28,28,30,0.95);">
+    <!-- Selected Beacon Card (Expanded for Raw Data) -->
+    <div id="mapCard" class="app-card" style="position:absolute;bottom:100px;left:20px;right:20px;z-index:500;margin:0;transform:translateY(150%);transition:transform 0.4s ease;background:rgba(28,28,30,0.95); max-height: 60%; overflow-y:auto;">
         <div style="display:flex;gap:14px;">
             <div class="item-img" id="cardIconContainer" style="width:50px;height:50px;">
                 <!-- Icon injected here -->
@@ -429,13 +446,18 @@ header {
         <hr style="border:0;border-top:1px solid rgba(255,255,255,0.1);margin:12px 0;">
         <div style="display:flex;gap:10px;">
             <button id="mc_find" class="btn-primary" style="flex:1;">Fly Details</button>
-            <button id="mc_del" class="btn-ghost" style="color:var(--danger);">Delete</button>
+            <button id="mc_toggle_raw" class="btn-ghost" style="font-size:11px;">Tech Data</button>
+            <button id="mc_del" class="btn-ghost" style="color:var(--danger);">Del</button>
+        </div>
+        <!-- Raw Data View -->
+        <div id="mc_raw_content" class="raw-data-container">
+            Scanning Firebase...
         </div>
     </div>
   </div>
 </div>
 
-<!-- 3. SETTINGS / ADD PAGE -->
+<!-- 3. SETTINGS PAGE -->
 <div id="page-settings" class="page">
     <div class="app-card">
         <h3>Management</h3>
@@ -457,14 +479,6 @@ header {
                 <div class="item-sub" id="lastSyncText">Last sync: Never</div>
             </div>
         </button>
-    </div>
-
-    <div class="app-card">
-        <h3>App Settings</h3>
-        <div style="margin-top:16px;display:flex;justify-content:space-between;align-items:center;">
-            <span>Dark Mode</span>
-            <span class="pill" style="background:var(--accent);color:black;">Always On</span>
-        </div>
     </div>
 </div>
 
@@ -502,7 +516,7 @@ header {
     </div>
 </div>
 
-<!-- NEW FINDER OVERLAY ("Flight Details Style") -->
+<!-- NEW FINDER OVERLAY -->
 <div id="finder-overlay">
     <div class="finder-panel">
         <div style="margin-bottom:20px;font-size:18px;font-weight:600;color:white;opacity:0.9;" id="findTargetName">Trolley Details</div>
@@ -525,7 +539,7 @@ header {
             <div class="compass-arrow" id="finderArrow"></div>
         </div>
 
-        <!-- Ticks visual like the image -->
+        <!-- Ticks -->
         <div style="display:flex;gap:10px;opacity:0.3;margin-top:auto;margin-bottom:40px;">
             <div style="width:2px;height:10px;background:white;"></div>
             <div style="width:2px;height:15px;background:white;"></div>
@@ -534,7 +548,6 @@ header {
             <div style="width:2px;height:10px;background:white;"></div>
         </div>
 
-        <!-- Floating X Button -->
         <button class="finder-close-btn" id="btnStopFind">✕</button>
     </div>
 </div>
@@ -556,6 +569,11 @@ let selectedBeacon = null;
 let placementMode = null;
 let tempPayload = null;
 let watchId = null;
+
+// User Location
+let userMarker = null;
+let userLat = null;
+let userLng = null;
 
 // Get Trolley SVG String
 const getTrolleyIcon = () => document.getElementById('tpl-icon').innerHTML;
@@ -595,7 +613,8 @@ function init(){
                     name: v.zoneId ? `${v.zoneId} • ${k}` : k,
                     zone: v.zoneId || "",
                     lat: v.latitude || v.lat,
-                    lng: v.longitude || v.lng
+                    lng: v.longitude || v.lng,
+                    raw: v // STORE RAW FIREBASE DATA HERE
                 };
             });
             updateUI();
@@ -610,6 +629,32 @@ function init(){
             updateUI();
         });
     } catch(e) { console.error(e); showToast("Firebase Error"); }
+
+    // START GEO TRACKING FOR "MY LOCATION"
+    if(navigator.geolocation) {
+        navigator.geolocation.watchPosition(
+            (pos) => {
+                userLat = pos.coords.latitude;
+                userLng = pos.coords.longitude;
+                
+                if(!userMarker) {
+                    // Create User Blue Dot Marker
+                    userMarker = L.circleMarker([userLat, userLng], {
+                        radius: 8,
+                        color: '#FFF',
+                        fillColor: '#007AFF',
+                        fillOpacity: 1,
+                        weight: 2
+                    }).addTo(map);
+                    userMarker.bindPopup("You are here");
+                } else {
+                    userMarker.setLatLng([userLat, userLng]);
+                }
+            },
+            (err) => console.warn("Location access denied"),
+            { enableHighAccuracy: true }
+        );
+    }
 
     setupInteractions();
 }
@@ -655,12 +700,8 @@ function renderMap(){
     const zoneFilter = document.getElementById("zoneFilter").value;
 
     beacons.forEach(b => {
-        // 1. If global zone filter is active, check that
         if(zoneFilter && b.zone !== zoneFilter) return;
 
-        // 2. VISUAL ISOLATION CHECK
-        // If a beacon is selected, ONLY show that specific beacon. 
-        // If it's not the selected one, skip adding it to the map.
         if(selectedBeacon && b.id !== selectedBeacon.id) return;
 
         if(!b.lat || !b.lng) return;
@@ -668,9 +709,8 @@ function renderMap(){
             radius: 8, color: '#FF453A', fillColor: '#FF453A', fillOpacity: 0.9, weight: 2
         }).bindPopup(`<b>${b.id}</b><br>${b.zone}`);
         
-        // Logic to select
         m.on('click', (e) => {
-             L.DomEvent.stopPropagation(e); // Prevent map click event
+             L.DomEvent.stopPropagation(e); 
              selectBeacon(b);
         });
 
@@ -678,11 +718,12 @@ function renderMap(){
         idToMarker.set(b.id, m);
     });
 
-    // Render Zones (hide zones if we are in isolated "selected" mode to reduce clutter, optional)
+    // Re-add User Marker if it exists (clusters clear layers wipes it if not careful)
+    if(userMarker) userMarker.addTo(map);
+
     Object.keys(zoneCircles).forEach(k => map.removeLayer(zoneCircles[k]));
     zoneCircles = {};
     
-    // Only draw zones if no beacon is selected (to focus)
     if(!selectedBeacon) {
         Object.keys(zones).forEach(zKey => {
             if(zoneFilter && zoneFilter !== zKey) return;
@@ -690,6 +731,61 @@ function renderMap(){
                 radius: FIXED_ZONE_RADIUS, color: '#30d158', fillColor: '#30d158', fillOpacity: 0.1, weight: 1, dashArray: '5, 5'
             }).addTo(map);
         });
+    }
+}
+
+// --- BLE SCANNER LOGIC ---
+async function startBleScan() {
+    if (!navigator.bluetooth) {
+        showToast("Web Bluetooth not supported in this browser.");
+        return;
+    }
+
+    try {
+        showToast("Scanning nearby BLE devices...");
+        
+        // 1. Open Native Picker
+        const device = await navigator.bluetooth.requestDevice({
+            acceptAllDevices: true, // Scans for everything
+            optionalServices: [] // We don't strictly need services to just ID it
+        });
+
+        // 2. Device Selected
+        const deviceName = device.name || device.id;
+        showToast(`Found: ${deviceName}`);
+        
+        if(!userLat || !userLng) {
+            alert("GPS signal not found. Cannot update trolley location.");
+            return;
+        }
+
+        // 3. Confirm Update
+        if(confirm(`Mark ${deviceName} at your current location?\n\nLat: ${userLat.toFixed(5)}\nLng: ${userLng.toFixed(5)}`)) {
+            // 4. Update Firebase
+            // Note: We use the device name as the ID in Firebase.
+            const updates = {
+                latitude: userLat,
+                longitude: userLng,
+                timestamp: new Date().toISOString(),
+                lastSeenBy: "BLE-Scanner-App",
+                zoneId: "Scanned" // Optional: Mark as scanned
+            };
+            
+            firebase.database().ref(`/Tracking/${deviceName}`).update(updates)
+            .then(() => {
+                 showToast("Location Updated Successfully!");
+                 viewOnMap(deviceName); // Jump to it
+            })
+            .catch(err => showToast("Update Failed: " + err.message));
+        }
+
+    } catch (error) {
+        console.log('Argh! ' + error);
+        if(error.name === 'NotFoundError') {
+            showToast("Scan cancelled.");
+        } else {
+            showToast("Error: " + error.message);
+        }
     }
 }
 
@@ -705,6 +801,10 @@ function setupInteractions(){
     });
 
     document.getElementById('hdr-add').onclick = () => document.getElementById('modalAdd').style.display = 'flex';
+    
+    // Bind BLE Button
+    document.getElementById('hdr-ble').onclick = startBleScan;
+
     document.getElementById('btnAddZone').onclick = () => document.getElementById('modalZone').style.display = 'flex';
     
     document.getElementById('btnAddConfirm').onclick = () => {
@@ -726,9 +826,7 @@ function setupInteractions(){
         switchToMapAndGuide("Tap map to set zone center");
     };
 
-    // --- MAP BACKGROUND CLICK LOGIC ---
     map.on('click', e => {
-        // 1. Handle Placement Mode
         if(placementMode){
             const { lat, lng } = e.latlng;
             if(placementMode === 'beacon'){
@@ -746,7 +844,6 @@ function setupInteractions(){
             return;
         }
 
-        // 2. Handle Deselect (Cancel Effect)
         if(selectedBeacon) {
             deselectBeacon();
         }
@@ -758,7 +855,6 @@ function setupInteractions(){
         if(found) selectBeacon(found);
     };
     
-    // X button on card now also deselects/refreshes map
     document.getElementById('mc_close').onclick = deselectBeacon;
 
     document.getElementById('mc_del').onclick = () => {
@@ -767,8 +863,25 @@ function setupInteractions(){
             deselectBeacon();
         }
     };
+
+    // Toggle Raw Data
+    document.getElementById('mc_toggle_raw').onclick = () => {
+        const el = document.getElementById('mc_raw_content');
+        el.classList.toggle('show');
+    };
+
     document.getElementById('mc_find').onclick = startCompass;
     document.getElementById('zoneFilter').onchange = updateUI;
+
+    // Manual map recenter to user
+    document.getElementById('mapRecenter').onclick = () => {
+        if(userLat && userLng) {
+            map.flyTo([userLat, userLng], 18);
+            showToast("Locating you...");
+        } else {
+            showToast("Waiting for GPS...");
+        }
+    };
 }
 
 function switchToMapAndGuide(msg){
@@ -791,17 +904,18 @@ function selectBeacon(b){
     // Show Card
     document.getElementById('mc_name').innerText = b.id;
     document.getElementById('mc_zone').innerText = b.zone || "No Zone";
-    document.getElementById('mapCard').style.transform = 'translateY(0)';
+    
+    // Inject Raw Data
+    document.getElementById('mc_raw_content').innerText = JSON.stringify(b.raw, null, 2);
+    document.getElementById('mc_raw_content').classList.remove('show'); // Default hidden
 
-    // Trigger re-render to hide other dots
+    document.getElementById('mapCard').style.transform = 'translateY(0)';
     renderMap();
 }
 
 function deselectBeacon(){
     selectedBeacon = null;
-    // Hide Card
     document.getElementById('mapCard').style.transform = 'translateY(150%)';
-    // Trigger re-render to show ALL dots again
     renderMap();
 }
 
@@ -817,12 +931,10 @@ function showToast(msg){
 function startCompass(){
     if(!selectedBeacon) return;
     
-    // Hide map card, show overlay
     document.getElementById('mapCard').style.transform = 'translateY(150%)';
     const overlay = document.getElementById('finder-overlay');
     overlay.style.display = 'flex';
     
-    // Small delay for animation to trigger
     requestAnimationFrame(() => {
         overlay.classList.add('active');
     });
@@ -841,9 +953,8 @@ document.getElementById('btnStopFind').onclick = () => {
     
     setTimeout(() => {
         overlay.style.display = 'none';
-    }, 500); // Wait for transition
+    }, 500); 
 
-    // When closing Compass, bring back the card (user is still technically selecting the trolley)
     if(selectedBeacon) document.getElementById('mapCard').style.transform = 'translateY(0)';
 
     if(watchId) navigator.geolocation.clearWatch(watchId);
@@ -857,6 +968,9 @@ function processOrientation(e){
 }
 function processPosition(pos){
     const { latitude, longitude } = pos.coords;
+    userLat = latitude; // update global user pos
+    userLng = longitude;
+
     const destLat = selectedBeacon.lat;
     const destLng = selectedBeacon.lng;
     
