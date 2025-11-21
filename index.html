@@ -2,8 +2,10 @@
 <html lang="en">
 <head>
 <meta charset="utf-8" />
-<title>GPS Tracking • Terminal & Beacon</title>
-<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Trolley Tracker • Premium</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -12,1853 +14,820 @@
 <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css">
 <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
 
-<!-- uibuilder client for Node-RED (safe to 404 on GitHub Pages) -->
+<!-- uibuilder client -->
 <script src="/uibuilder/uibuilder.iife.min.js"></script>
 
-<!-- Firebase compat SDKs (v11) -->
+<!-- Firebase -->
 <script src="https://www.gstatic.com/firebasejs/11.0.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/11.0.1/firebase-database-compat.js"></script>
 
-<!-- Aesthetic font -->
+<!-- Google Fonts -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 
 <style>
-:root{
-  --bg:#f4ecff;
-  --bg-soft:#efe7ff;
-  --panel:#fdfcff;
-  --panel-2:#ffffff;
-  --text:#111827;
-  --muted:#6b7280;
-  --border:#e5e7eb;
-  --accent:#8b5cf6;
-  --accent-soft:#ede9fe;
-  --accent-2:#22c55e;
-  --danger:#f97373;
-  --chip:#f4f4ff;
-  --chip-br:#e0e7ff;
+:root {
+  /* App Colors - Dark Mode Default */
+  --bg-app: #0f0f11;
+  --bg-panel: #1c1c1e;
+  --bg-card: #262629;
+  
+  --text-main: #ffffff;
+  --text-muted: #9ca3af;
+  
+  --accent: #F2994A; 
+  --accent-grad: linear-gradient(135deg, #F2994A 0%, #F2C94C 100%);
+  
+  --danger: #ff453a;
+  --glass: rgba(20, 20, 20, 0.65);
+  --glass-border: rgba(255,255,255,0.08);
+  
+  --radius-l: 32px;
+  --radius-m: 20px;
+  
+  --anim: all 0.4s cubic-bezier(0.19, 1, 0.22, 1);
 }
 
-*{box-sizing:border-box}
-body{
-  margin:0;
-  background:radial-gradient(1200px 1200px at 50% -200px,#f4ecff,#ede9fe 50%,#fdfbff);
-  color:var(--text);
-  font-family:'Poppins',system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
-  -webkit-font-smoothing:antialiased;
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+body {
+  margin: 0;
+  background-color: var(--bg-app);
+  color: var(--text-main);
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  height: 100vh;
+  overflow: hidden;
 }
 
-body.dark{
-  --bg:#050317;
-  --bg-soft:#080825;
-  --panel:#0b0b2b;
-  --panel-2:#0f102e;
-  --text:#e5e7eb;
-  --muted:#9ca3af;
-  --border:#262b4c;
-  --accent:#a855f7;
-  --accent-soft:#1e1638;
-  --accent-2:#4ade80;
-  --danger:#f97373;
-  --chip:#050317;
-  --chip-br:#303257;
-
-  background:radial-gradient(1200px 1200px at 50% -200px,#050317,#02010b 60%,#000000);
+/* --- SVG Icon Class --- */
+.trolley-icon-svg {
+    width: 100%; height: 100%;
+    display: block;
 }
 
-/* top bar */
-header{
-  position:sticky;
-  top:0;
-  z-index:10;
-  background:linear-gradient(180deg,rgba(244,236,255,.96),rgba(244,236,255,.88));
-  backdrop-filter:blur(14px);
-  border-bottom:1px solid rgba(229,231,235,.9);
-  display:flex;
-  flex-wrap:wrap;
-  gap:10px;
-  align-items:center;
-  padding:12px 18px;
-}
-body.dark header{
-  background:linear-gradient(180deg,rgba(5,3,23,.97),rgba(5,3,23,.94));
-  border-bottom-color:#18181b;
-}
-header h1{
-  font-size:18px;
-  margin:0 12px 0 0;
-  font-weight:800;
-  letter-spacing:.04em;
+/* --- Typography --- */
+h1, h2, h3 { margin: 0; font-weight: 700; letter-spacing: -0.02em; }
+.small { font-size: 13px; }
+.muted { color: var(--text-muted); }
+.pill {
+  padding: 4px 12px;
+  background: rgba(255,255,255,0.1);
+  border-radius: 100px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  backdrop-filter: blur(4px);
 }
 
-input,select,button{
-  background:#f9fafb;
-  border:1px solid var(--chip-br);
-  color:var(--text);
-  padding:9px 12px;
-  border-radius:999px;
-  font-size:14px;
-  outline:none;
-}
-body.dark input,
-body.dark select,
-body.dark button{
-  background:#050317;
-}
-input::placeholder{color:#9ca3af}
-select option{background:#ffffff;color:var(--text)}
+/* --- Buttons & Inputs --- */
+button { border: none; cursor: pointer; font-family: inherit; transition: var(--anim); outline: none; }
+button:active { transform: scale(0.96); }
 
-button.accent{
-  background:var(--accent);
-  color:#fdfcff;
-  border:none;
-  box-shadow:0 10px 18px rgba(139,92,246,.35);
+.btn-primary {
+  background: var(--accent-grad); color: black;
+  padding: 12px 24px; border-radius: 100px;
+  font-weight: 700; font-size: 14px;
+  box-shadow: 0 8px 20px rgba(242, 153, 74, 0.3);
 }
-button.ghost{
-  background:#f9fafb;
-  color:#111827;
-  border:1px solid var(--chip-br);
+.btn-ghost {
+  background: rgba(255,255,255,0.08); color: var(--text-main);
+  padding: 10px 20px; border-radius: 100px;
+  font-size: 13px; font-weight: 500;
 }
-body.dark button.ghost{
-  background:#050317;
-  color:#e5e7eb;
-  border-color:#303257;
-}
-button.danger{
-  background:var(--danger);
-  color:#fff;
-  border:none;
-  box-shadow:0 8px 16px rgba(248,113,113,.28);
-}
-button:disabled{opacity:.6;cursor:not-allowed}
-.small{font-size:12px}
-.muted{color:var(--muted)}
-
-.page{
-  display:none;
-  padding:16px 18px 96px 18px;
-}
-.page.active{display:block}
-
-/* map layout */
-#page-map main{
-  display:grid;
-  grid-template-columns: minmax(0,1.7fr) minmax(340px,380px);
-  gap:18px;
-  height:calc(100vh - 64px - 96px);
-}
-#map{
-  width:100%;
-  height:100%;
-  border-radius:28px;
-  overflow:hidden;
-  box-shadow:0 26px 60px rgba(15,23,42,.55);
-}
-aside{
-  background:transparent;
-  border-left:none;
-  padding:0;
-  overflow:auto;
+.btn-icon {
+  width: 44px; height: 44px; border-radius: 50%;
+  background: var(--bg-card);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px;
 }
 
-/* cards / list */
-.card{
-  background:var(--panel-2);
-  border:1px solid var(--border);
-  border-radius:26px;
-  padding:16px 18px;
-  margin-bottom:16px;
-  box-shadow:0 18px 28px rgba(148,163,184,.22);
-}
-body.dark .card{
-  box-shadow:0 24px 40px rgba(0,0,0,.9);
+input, select {
+  background: var(--bg-card);
+  border: 1px solid rgba(255,255,255,0.05);
+  color: white; padding: 14px 18px;
+  border-radius: var(--radius-m); width: 100%;
+  font-size: 14px; outline: none;
 }
 
-.row{display:flex;justify-content:space-between;gap:8px;align-items:center}
-hr{border:none;border-top:1px solid var(--border);margin:10px 0}
-.pill{
-  display:inline-block;
-  padding:4px 10px;
-  border-radius:999px;
-  font-size:11px;
-  border:1px solid var(--chip-br);
-  background:var(--chip);
-  color:#4b5563;
-}
-body.dark .pill{
-  background:#050317;
-  color:#e5e7eb;
+/* --- Header --- */
+header {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 50;
+  padding: 16px 20px;
+  background: linear-gradient(180deg, var(--bg-app) 0%, rgba(15,15,17,0.9) 80%, transparent 100%);
+  display: flex; align-items: center; justify-content: space-between;
 }
 
-.list{
-  display:flex;
-  flex-direction:column;
-  gap:10px;
-  max-height:420px;
-  overflow:auto;
+/* --- Pages --- */
+.page {
+  position: absolute; inset: 0;
+  padding: 80px 20px 100px 20px;
+  overflow-y: auto;
+  opacity: 0; visibility: hidden; transform: scale(0.98);
+  transition: var(--anim);
 }
-.item{
-  border:1px solid var(--chip-br);
-  border-radius:18px;
-  padding:9px 12px;
-  cursor:pointer;
-  background:#f9fafb;
-  transition:.16s ease;
+.page.active { opacity: 1; visibility: visible; transform: scale(1); }
+
+/* --- Cards & Lists --- */
+.app-card {
+  background: var(--bg-panel); border-radius: var(--radius-l);
+  padding: 20px; margin-bottom: 20px;
+  border: 1px solid rgba(255,255,255,0.03);
 }
-body.dark .item{
-  background:#050317;
+.list-grid { display: grid; grid-template-columns: 1fr; gap: 16px; }
+.item-card {
+  background: var(--bg-card); border-radius: var(--radius-m);
+  padding: 12px; display: flex; align-items: center; gap: 14px;
+  transition: var(--anim); cursor: pointer; border: 1px solid transparent;
 }
-.item:hover{
-  background:#ffffff;
-  border-color:var(--accent);
-  box-shadow:0 14px 24px rgba(148,163,184,.35);
-}
-body.dark .item:hover{
-  background:var(--bg-soft);
+.item-card:hover { background: #323236; border-color: rgba(242, 153, 74, 0.3); }
+.item-img {
+  width: 60px; height: 60px; border-radius: 16px;
+  background: linear-gradient(135deg, #2a2a2d, #1f1f22);
+  padding: 8px;
+  display: flex; align-items: center; justify-content: center;
 }
 
-/* toast / banners / dialogs */
-.toast{
-  position:fixed;
-  right:18px;
-  bottom:82px;
-  background:#111827;
-  border:1px solid rgba(148,163,184,.85);
-  color:#f9fafb;
-  padding:8px 12px;
-  border-radius:999px;
-  opacity:0;
-  transform:translateY(10px);
-  transition:.25s;
-  z-index:1200;
-  font-size:13px;
-}
-.toast.show{opacity:1;transform:translateY(0)}
-.banner{
-  position:absolute;
-  left:50%;
-  transform:translateX(-50%);
-  top:72px;
-  background:#111827;
-  border:1px solid rgba(148,163,184,.8);
-  color:#e5e7eb;
-  padding:6px 11px;
-  border-radius:999px;
-  font-size:13px;
-  display:none;
-  z-index:600;
-}
-.confirm{
-  position:fixed;
-  inset:0;
-  background:rgba(15,23,42,.5);
-  display:none;
-  align-items:center;
-  justify-content:center;
-  z-index:1200;
-}
-.dialog{
-  background:var(--panel-2);
-  border:1px solid var(--border);
-  border-radius:22px;
-  padding:16px;
-  width:min(420px,90vw);
-  box-shadow:0 26px 70px rgba(15,23,42,.7);
+.item-content { flex: 1; }
+.item-title { font-weight: 700; font-size: 16px; margin-bottom: 2px; }
+.item-sub { font-size: 12px; color: var(--text-muted); }
+.item-action {
+  background: var(--accent-grad); color: black;
+  width: 36px; height: 36px; border-radius: 12px;
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 700; font-size: 18px;
 }
 
-/* stats */
-.progress-row{display:flex;align-items:center;gap:10px;margin:8px 0}
-.progress-label{width:68px;color:var(--muted);font-size:12px}
-.progress-bar{
-  flex:1;
-  height:8px;
-  border-radius:999px;
-  background:#ede9fe;
-  border:1px solid #ddd6fe;
-  overflow:hidden;
+/* --- Map --- */
+#map-container {
+  width: 100%; height: 100%;
+  border-radius: var(--radius-l); overflow: hidden; position: relative;
+  border: 1px solid rgba(255,255,255,0.05);
 }
-body.dark .progress-bar{
-  background:#050317;
-  border-color:#262b4c;
+#map { width: 100%; height: 100%; background: #121212; }
+
+/* --- Stats Grid --- */
+.stats-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 20px; }
+.stat-box {
+  background: var(--bg-card); border-radius: var(--radius-m);
+  padding: 16px; display: flex; flex-direction: column; gap: 6px;
 }
-.progress-fill{
-  height:100%;
-  background:linear-gradient(90deg,var(--accent),#6366f1);
+.stat-val { font-size: 28px; font-weight: 800; color: var(--text-main); }
+.stat-label { font-size: 12px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+
+/* --- Bottom Nav --- */
+.nav-dock {
+  position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+  background: rgba(30, 30, 32, 0.8); backdrop-filter: blur(16px);
+  padding: 6px; border-radius: 100px;
+  display: flex; gap: 4px;
+  box-shadow: 0 20px 50px rgba(0,0,0,0.6); z-index: 100;
+  border: 1px solid rgba(255,255,255,0.08);
 }
-.quick-filters{
-  display:grid;
-  grid-template-columns:repeat(auto-fit,minmax(70px,1fr));
-  gap:8px;
-  margin-top:8px;
+.nav-item {
+  padding: 10px 20px; border-radius: 100px;
+  color: #8e8e93; font-size: 20px;
+  display: flex; align-items: center; justify-content: center;
+  transition: var(--anim);
 }
-.quick-filters button{
-  padding:8px 0;
-  border-radius:18px;
-  border:1px solid var(--chip-br);
-  background:#f9fafb;
-  cursor:pointer;
-  font-size:12px;
-}
-body.dark .quick-filters button{
-  background:#050317;
-}
-.quick-filters button.active{
-  border-color:var(--accent);
-  background:var(--accent-soft);
-  box-shadow:0 0 0 1px rgba(139,92,246,.3);
+.nav-item.active { background: var(--text-main); color: black; box-shadow: 0 4px 12px rgba(255,255,255,0.2); }
+.nav-item span { display: none; font-size: 12px; font-weight: 600; margin-left: 6px; }
+.nav-item.active span { display: block; }
+
+/* --- NEW FINDER UI ("Flight Details" Style) --- */
+#finder-overlay {
+    position: fixed; inset: 0; z-index: 2000;
+    pointer-events: none; /* Let clicks pass to map when not on panel */
+    display: none;
+    flex-direction: column;
+    justify-content: flex-end;
 }
 
-/* finder overlay */
-#finder{
-  position:fixed;
-  inset:0;
-  display:none;
-  z-index:1400;
-  background:radial-gradient(1200px 1200px at 50% -200px,#050317,#111827 70%,#02010b);
-  align-items:center;
-  justify-content:center;
-  flex-direction:column;
-  gap:18px;
-}
-.finder-title{text-align:center}
-#viz{width:260px;height:260px;filter:drop-shadow(0 20px 40px rgba(0,0,0,.6))}
-#arrowSpin{transform-origin:50% 50%;transition:transform .08s linear}
-.finder-chip{
-  display:inline-block;
-  border:1px solid #1f2937;
-  background:#020617;
-  border-radius:999px;
-  padding:6px 10px;
-  color:#e5e7eb;
-  font-size:13px;
-}
-.finder-cta{display:flex;gap:10px;margin-top:8px;justify-content:center}
-
-/* level picker modal */
-#levelModal{
-  position:fixed;
-  inset:0;
-  background:rgba(15,23,42,.5);
-  display:none;
-  align-items:center;
-  justify-content:center;
-  z-index:1100;
-}
-.level-grid{
-  display:grid;
-  grid-template-columns:repeat(auto-fit,minmax(120px,1fr));
-  gap:10px;
-  margin-top:10px;
-}
-.level-card{
-  border-radius:20px;
-  border:1px solid var(--border);
-  background:linear-gradient(145deg,#fdfcff,#efe9ff);
-  padding:10px;
-  cursor:pointer;
-  text-align:left;
-  transition:.16s ease;
-  box-shadow:0 12px 26px rgba(148,163,184,.35);
-}
-body.dark .level-card{
-  background:linear-gradient(145deg,#0b0b2b,#050317);
-}
-.level-card:hover{
-  transform:translateY(-2px);
-  box-shadow:0 18px 32px rgba(148,163,184,.55);
-  border-color:var(--accent);
-}
-.level-tag{
-  display:inline-flex;
-  align-items:center;
-  justify-content:center;
-  width:32px;
-  height:32px;
-  border-radius:14px;
-  background:var(--accent);
-  color:#fdfcff;
-  font-weight:700;
-  margin-bottom:6px;
-}
-.level-title{
-  font-weight:700;
-  font-size:14px;
-}
-.level-sub{
-  font-size:12px;
-  color:var(--muted);
+/* The Glass Panel */
+.finder-panel {
+    pointer-events: auto;
+    position: relative;
+    margin: 0 16px 16px 16px;
+    height: 65vh;
+    background: var(--glass);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    border-radius: 40px;
+    border: 1px solid var(--glass-border);
+    box-shadow: 0 20px 80px rgba(0,0,0,0.8);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 30px 20px;
+    transform: translateY(100%);
+    transition: transform 0.5s cubic-bezier(0.19, 1, 0.22, 1);
 }
 
-/* bottom nav */
-.bottom-nav{
-  position:fixed;
-  left:50%;
-  bottom:18px;
-  transform:translateX(-50%);
-  background:#111827;
-  border-radius:999px;
-  padding:6px;
-  display:flex;
-  gap:6px;
-  box-shadow:0 24px 50px rgba(15,23,42,.9);
-  z-index:1300;
-}
-body.dark .bottom-nav{
-  background:#02010b;
-}
-.bottom-nav .nav-btn{
-  border:none;
-  background:transparent;
-  color:#e5e7eb;
-  border-radius:999px;
-  padding:9px 14px;
-  display:flex;
-  align-items:center;
-  gap:6px;
-  font-size:13px;
-  cursor:pointer;
-  min-width:90px;
-}
-.bottom-nav .nav-btn span.icon{
-  font-size:16px;
-}
-.bottom-nav .nav-btn.active{
-  background:#fdfcff;
-  color:#111827;
-}
-body.dark .bottom-nav .nav-btn.active{
-  background:#fdfcff;
-  color:#111827;
+#finder-overlay.active .finder-panel {
+    transform: translateY(0);
 }
 
-/* home hero */
-.home-hero-title{
-  font-size:18px;
-  font-weight:800;
+/* Toggle Pills (Speed/Height style) */
+.finder-toggles {
+    background: rgba(0,0,0,0.25);
+    border-radius: 20px;
+    padding: 4px;
+    display: flex;
+    gap: 4px;
+    margin-bottom: 40px;
 }
-.home-hero-sub{
-  font-size:13px;
-  color:var(--muted);
-  margin-top:4px;
+.finder-toggle-btn {
+    padding: 10px 24px;
+    border-radius: 16px;
+    font-size: 14px;
+    font-weight: 500;
+    color: #888;
+    background: transparent;
 }
-.home-hero-banner{
-  display:flex;
-  align-items:center;
-  gap:16px;
-  margin-top:4px;
-}
-.hero-image{
-  width:96px;
-  height:96px;
-  border-radius:26px;
-  background:radial-gradient(circle at 20% 20%,#fef3c7,#fb7185 35%,#8b5cf6 80%);
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  box-shadow:0 18px 40px rgba(148,163,184,.45);
-}
-.hero-image span{
-  font-size:42px;
-}
-.hero-text-block{flex:1}
-
-/* home stats */
-.home-stats-grid{
-  display:grid;
-  grid-template-columns:repeat(auto-fit,minmax(160px,1fr));
-  gap:10px;
-  margin:14px 0 8px 0;
-}
-.home-stat-card{
-  border-radius:20px;
-  border:1px solid var(--border);
-  background:var(--panel-2);
-  padding:12px 13px;
-  box-shadow:0 15px 28px rgba(148,163,184,.22);
-}
-.home-stat-label{
-  font-size:11px;
-  text-transform:uppercase;
-  letter-spacing:.15em;
-  color:var(--muted);
-}
-.home-stat-value{
-  font-size:22px;
-  font-weight:800;
-  margin-top:4px;
-}
-.home-stat-foot{
-  font-size:12px;
-  margin-top:2px;
-  color:var(--muted);
+.finder-toggle-btn.active {
+    background: rgba(255,255,255,0.15);
+    color: white;
+    font-weight: 600;
 }
 
-/* home list */
-#homeBeaconList .home-item{
-  border-radius:18px;
-  border:1px solid var(--chip-br);
-  padding:10px 12px;
-  background:#f9fafb;
-  cursor:pointer;
-  display:flex;
-  flex-direction:column;
-  gap:4px;
+/* Main Data Display */
+.finder-data-display {
+    text-align: center;
+    margin-bottom: auto;
 }
-body.dark #homeBeaconList .home-item{
-  background:#050317;
+.finder-value {
+    font-size: 80px;
+    font-weight: 300;
+    letter-spacing: -2px;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
 }
-.home-avatar{
-  width:40px;
-  height:40px;
-  border-radius:16px;
-  background:var(--accent-soft);
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  box-shadow:0 10px 24px rgba(148,163,184,.35);
-}
-.home-avatar span{
-  font-size:22px;
-}
-body.dark .home-avatar{
-  background:#1e1638;
+.finder-unit {
+    font-size: 24px;
+    font-weight: 400;
+    color: #aaa;
+    margin-left: 4px;
 }
 
-/* detail page */
-.detail-layout{
-  max-width:480px;
-  margin:0 auto;
+/* Compass Visual */
+.finder-compass-wrapper {
+    width: 140px; height: 140px;
+    margin-bottom: 20px;
+    position: relative;
+    display: flex; align-items: center; justify-content: center;
 }
-.detail-header-row{
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  gap:10px;
+.compass-bg {
+    position: absolute; inset: 0;
+    border-radius: 50%;
+    border: 1px solid rgba(255,255,255,0.1);
+    background: linear-gradient(180deg, rgba(255,255,255,0.05), rgba(0,0,0,0.2));
 }
-.detail-back{
-  border-radius:999px;
-  padding:7px 12px;
-  display:flex;
-  align-items:center;
-  gap:6px;
-  font-size:13px;
-}
-.detail-title{
-  font-size:20px;
-  font-weight:800;
-}
-.detail-sub{
-  font-size:12px;
-  color:var(--muted);
-}
-.detail-grid{
-  display:grid;
-  grid-template-columns:120px 1fr;
-  gap:6px 10px;
-  font-size:14px;
-  margin-top:10px;
-}
-.detail-actions{
-  margin-top:18px;
-  display:flex;
-  gap:10px;
+.compass-arrow {
+    width: 40px; height: 100px;
+    background: linear-gradient(to bottom, #ff3b30 50%, #ccc 50%);
+    clip-path: polygon(50% 0, 100% 100%, 50% 85%, 0% 100%);
+    border-radius: 4px;
+    filter: drop-shadow(0 4px 10px rgba(0,0,0,0.5));
+    transition: transform 0.1s linear;
 }
 
-/* switch */
-.switch{
-  position:relative;
-  display:inline-block;
-  width:44px;
-  height:24px;
+/* Floating Close Button (White Circle) */
+.finder-close-btn {
+    width: 64px; height: 64px;
+    background: white;
+    border-radius: 50%;
+    color: black;
+    font-size: 24px;
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+    position: absolute;
+    bottom: 40px;
+    left: 50%;
+    transform: translateX(-50%);
+    cursor: pointer;
+    transition: transform 0.2s;
+    z-index: 2002;
 }
-.switch input{
-  opacity:0;
-  width:0;
-  height:0;
+.finder-close-btn:active { transform: translateX(-50%) scale(0.9); }
+
+/* --- Modals --- */
+.modal-backdrop {
+  position: fixed; inset: 0; z-index: 3000;
+  background: rgba(0,0,0,0.6); backdrop-filter: blur(6px);
+  display: none; align-items: center; justify-content: center;
 }
-.slider{
-  position:absolute;
-  cursor:pointer;
-  top:0;left:0;right:0;bottom:0;
-  background:#e5e7eb;
-  border-radius:999px;
-  transition:.2s;
-}
-.slider:before{
-  content:"";
-  position:absolute;
-  height:18px;
-  width:18px;
-  left:3px;
-  bottom:3px;
-  background:#ffffff;
-  border-radius:50%;
-  transition:.2s;
-}
-.switch input:checked + .slider{
-  background:#6366f1;
-}
-.switch input:checked + .slider:before{
-  transform:translateX(18px);
+.modal-content {
+  background: var(--bg-panel); width: 90%; max-width: 400px;
+  border-radius: var(--radius-l); padding: 24px;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.8);
+  border: 1px solid rgba(255,255,255,0.05);
 }
 
-/* mobile */
-@media(max-width:980px){
-  #page-map main{
-    grid-template-columns:1fr;
-    grid-template-rows:340px auto;
-    height:auto;
-  }
-}
+/* Leaflet Tweaks */
+.leaflet-container { background: #121212 !important; }
+.leaflet-popup-content-wrapper { background: var(--bg-panel); color: white; border-radius: 12px; }
+.leaflet-popup-tip { background: var(--bg-panel); }
 </style>
 </head>
 <body>
+
+<!-- Header -->
 <header>
-  <h1>Terminal Map</h1>
-  <input id="search" placeholder="Search beacon…" />
-
-  <!-- zone filter built dynamically -->
-  <select id="zoneFilter">
-    <option value="">All zones</option>
-  </select>
-
-  <button id="levelBtn" class="ghost">Levels</button>
-  <span class="muted small" id="lastSync">Last sync: —</span>
+  <div style="display:flex;align-items:center;gap:10px;">
+    <div style="width:32px;height:32px;background:var(--accent-grad);border-radius:8px;display:flex;align-items:center;justify-content:center;font-weight:bold;color:black;">T</div>
+    <h1 style="font-size:18px;">Trolley<span style="color:var(--accent)">Map</span></h1>
+  </div>
+  <div style="display:flex;gap:8px;">
+    <button id="hdr-add" class="btn-ghost" style="padding:8px 12px;">+ Add</button>
+    <div style="width:32px;height:32px;border-radius:50%;background:#333;overflow:hidden;">
+       <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Felix" width="32" height="32" alt="User">
+    </div>
+  </div>
 </header>
 
-<div class="banner" id="placementBanner">Placement mode – click on map to place new beacon • Esc to cancel</div>
-<div class="banner" id="zonePlacementBanner" style="top:100px;">Zone centre mode – click on map to set zone centre • Esc to cancel</div>
+<!-- TROLLEY ICON TEMPLATE (Red Handle) -->
+<template id="tpl-icon">
+    <svg class="trolley-icon-svg" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <!-- Handle (Red) -->
+        <path d="M19 5H21" stroke="#FF453A" stroke-width="2.5" stroke-linecap="round"/>
+        <path d="M16 5H19L18.5 7" stroke="#FF453A" stroke-width="2.5" stroke-linecap="round"/>
+        <!-- Basket (Wireframe Dark) -->
+        <path d="M4 6h14l-1.5 9h-11L4 6z" stroke="#E0E0E0" stroke-width="1.5"/>
+        <path d="M5.5 9h11" stroke="#E0E0E0" stroke-width="1" stroke-opacity="0.5"/>
+        <path d="M5 12h10" stroke="#E0E0E0" stroke-width="1" stroke-opacity="0.5"/>
+        <path d="M8 6v9" stroke="#E0E0E0" stroke-width="1" stroke-opacity="0.5"/>
+        <path d="M11 6v9" stroke="#E0E0E0" stroke-width="1" stroke-opacity="0.5"/>
+        <path d="M14 6v9" stroke="#E0E0E0" stroke-width="1" stroke-opacity="0.5"/>
+        <!-- Frame -->
+        <path d="M1 2h3l3.5 16h11" stroke="#E0E0E0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        <!-- Wheels -->
+        <circle cx="8" cy="20" r="1.5" fill="#888"/>
+        <circle cx="17" cy="20" r="1.5" fill="#888"/>
+    </svg>
+</template>
 
-<!-- HOME PAGE -->
+<!-- 1. HOME PAGE -->
 <div id="page-home" class="page active">
-  <div class="card">
-    <div class="row" style="margin-bottom:6px;">
-      <div class="home-hero-title">Trolley overview</div>
-      <span class="pill">Live</span>
+  <!-- Hero Stats -->
+  <div class="app-card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+      <h3>Overview</h3>
+      <span class="pill" style="color:var(--accent)">Live Updates</span>
+    </div>
+    
+    <div class="stats-row">
+      <div class="stat-box">
+        <span class="stat-label">Active Trolleys</span>
+        <span class="stat-val" id="statBeaconCount">0</span>
+      </div>
+      <div class="stat-box">
+        <span class="stat-label">Active Zones</span>
+        <span class="stat-val" id="statZoneCount">0</span>
+      </div>
     </div>
 
-    <div class="home-hero-banner">
-      <div class="hero-image">
-        <span>🛒</span>
-      </div>
-      <div class="hero-text-block">
-        <div class="home-hero-sub" style="font-size:14px;">
-          Live summary of trolleys & zones
-        </div>
-        <div class="small muted" style="margin-top:4px;">
-          Track every beacon in the terminal at a glance.
-        </div>
-      </div>
-    </div>
-
-    <div class="home-stats-grid">
-      <div class="home-stat-card" id="statCardBeacons">
-        <div class="home-stat-label">TROLLEYS</div>
-        <div class="home-stat-value" id="statBeaconCount">0</div>
-        <div class="home-stat-foot">Active beacons in zone</div>
-      </div>
-      <div class="home-stat-card" id="statCardZones">
-        <div class="home-stat-label">ZONES</div>
-        <div class="home-stat-value" id="statZoneCount">0</div>
-        <div class="home-stat-foot">Zones with activity</div>
-      </div>
+    <!-- Filter -->
+    <div style="position:relative;">
+        <select id="zoneFilter">
+            <option value="">All Zones</option>
+        </select>
+        <div style="position:absolute;right:14px;top:14px;pointer-events:none;font-size:10px;">▼</div>
     </div>
   </div>
 
-  <div class="card">
-    <div class="row">
-      <b>Recent trolleys</b>
-      <span class="small muted" id="homeBeaconCounter">0 items</span>
-    </div>
-    <div class="small muted" style="margin:6px 0 8px 0;">
-      Showing trolleys in the selected zone. Tap to view full details.
-    </div>
-    <div id="homeBeaconList" class="list"></div>
-    <div id="homeEmpty" class="small muted" style="display:none;">No items yet in this zone.</div>
+  <!-- List Header -->
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;padding:0 4px;">
+    <h3 style="font-size:18px;">Recent Trolleys</h3>
+    <span class="small muted" id="listCount">0 items</span>
   </div>
+
+  <!-- Trolley List -->
+  <div id="homeList" class="list-grid"></div>
+  <div id="homeEmpty" class="muted small" style="text-align:center;padding:20px;">No trolleys found.</div>
 </div>
 
-<!-- MAP PAGE -->
-<div id="page-map" class="page">
-  <main>
+<!-- 2. MAP PAGE -->
+<div id="page-map" class="page" style="padding:0;">
+  <div id="map-container">
     <div id="map"></div>
-
-    <aside>
-      <div class="card" id="statsCard">
-        <div class="row" style="align-items:flex-end;">
-          <div>
-            <div class="small muted" style="letter-spacing:.12em;text-transform:uppercase">Total number of trolleys</div>
-            <div style="font-size:28px;font-weight:800;margin-top:4px" id="totalCount">0</div>
-          </div>
-          <span class="pill" id="activeZonePill">All zones</span>
-        </div>
-        <div class="small muted" id="activeModeLabel" style="margin-top:4px;">Showing: Beacons</div>
-
-        <!-- dynamic quick filters -->
-        <div class="quick-filters" id="quickFilters"></div>
-
-        <div style="margin-top:12px" id="zoneProgress"></div>
-
-        <hr>
-        <div class="row" style="gap:8px;margin-bottom:4px;">
-          <select id="zoneCenterSelect" style="flex:1;min-width:0;">
-            <option value="">Select zone</option>
-          </select>
-          <button id="zoneCenterBtn" class="ghost small" style="white-space:nowrap;">Set zone centre on map</button>
-        </div>
-      </div>
-
-      <div class="card">
-        <div class="row">
-          <b>Overview</b>
-          <span class="small muted" id="overviewCount">0 shown</span>
-        </div>
-        <div id="overviewZoneLine" class="small muted" style="margin:6px 0 8px 0;">All zones</div>
-        <div id="overviewList" class="list"></div>
-        <div id="overviewEmpty" class="small muted" style="display:none;">No items in this filter.</div>
-      </div>
-
-      <div class="card" id="detailsEmpty">
-        <b>No beacon selected</b>
-        <div class="muted small">Click a marker or a list item for details.</div>
-      </div>
-
-      <div class="card" id="details" style="display:none">
-        <div class="row">
-          <div>
-            <div id="d_name" style="font-weight:800;">—</div>
-            <div class="muted small">ID: <span id="d_id">—</span></div>
-          </div>
-          <span id="d_zone" class="pill">—</span>
-        </div>
-        <hr>
-        <div class="kv" style="display:grid;grid-template-columns:120px 1fr;gap:6px 10px;font-size:14px;">
-          <div class="muted">Zone</div><div id="d_zoneDetail">—</div>
-          <div class="muted">Last Update</div><div id="d_updated">—</div>
-          <div class="muted">Coords</div><div id="d_coords">—</div>
-        </div>
-        <hr>
-        <div class="row">
-          <span class="small muted">Actions</span>
-          <div style="display:flex;gap:8px;">
-            <button id="btnSearch" class="accent">Search</button>
-            <button id="btnDelete" class="danger">Delete</button>
-          </div>
-        </div>
-      </div>
-    </aside>
-  </main>
-</div>
-
-<!-- ADD PAGE -->
-<div id="page-add" class="page">
-  <div class="card">
-    <h3 style="margin-top:0;">Add & Sync</h3>
-    <p class="small muted" style="margin:4px 0 10px 0;">
-      Use this tab to add new trolley beacons and zones, and refresh the latest data from your backend.
-    </p>
-    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:4px;">
-      <button id="addBtn" class="accent">Add Beacon 😊</button>
-      <button id="addZoneBtn" class="ghost">Add Zone 🔵</button>
-      <button id="refresh" class="ghost">Refresh data</button>
+    
+    <!-- Floating Map Controls -->
+    <div style="position:absolute;top:80px;left:20px;right:20px;z-index:500;display:flex;gap:8px;">
+      <input id="mapSearch" placeholder="Search ID or Zone..." style="background:rgba(28,28,30,0.9);backdrop-filter:blur(10px);box-shadow:0 8px 20px rgba(0,0,0,0.3);">
+      <button id="mapRecenter" class="btn-icon" style="background:rgba(28,28,30,0.9);color:var(--accent);flex-shrink:0;">⌖</button>
     </div>
-    <p class="small muted" style="margin-top:8px;">After adding a zone, click on the map to set its centre.</p>
+
+    <!-- Selected Beacon Card (Small) -->
+    <div id="mapCard" class="app-card" style="position:absolute;bottom:100px;left:20px;right:20px;z-index:500;margin:0;transform:translateY(150%);transition:transform 0.4s ease;background:rgba(28,28,30,0.95);">
+        <div style="display:flex;gap:14px;">
+            <div class="item-img" id="cardIconContainer" style="width:50px;height:50px;">
+                <!-- Icon injected here -->
+            </div>
+            <div style="flex:1;">
+                <div id="mc_name" style="font-weight:700;font-size:16px;">Trolley Name</div>
+                <div id="mc_zone" class="small muted">Zone Info</div>
+            </div>
+            <button id="mc_close" class="btn-ghost" style="width:30px;height:30px;padding:0;display:flex;align-items:center;justify-content:center;">✕</button>
+        </div>
+        <hr style="border:0;border-top:1px solid rgba(255,255,255,0.1);margin:12px 0;">
+        <div style="display:flex;gap:10px;">
+            <button id="mc_find" class="btn-primary" style="flex:1;">Fly Details</button>
+            <button id="mc_del" class="btn-ghost" style="color:var(--danger);">Delete</button>
+        </div>
+    </div>
   </div>
 </div>
 
-<!-- SETTINGS PAGE -->
+<!-- 3. SETTINGS / ADD PAGE -->
 <div id="page-settings" class="page">
-  <div class="card">
-    <h3 style="margin-top:0;">Settings</h3>
-    <div class="row" style="margin-top:10px;">
-      <div>
-        <div>Dark mode</div>
-        <div class="small muted">Switch between light and dark theme.</div>
-      </div>
-      <label class="switch">
-        <input type="checkbox" id="darkToggle">
-        <span class="slider"></span>
-      </label>
-    </div>
-  </div>
-</div>
-
-<!-- FULL DETAIL PAGE -->
-<div id="page-detail" class="page">
-  <div class="detail-layout">
-    <div class="card">
-      <div class="detail-header-row">
-        <button id="detailBack" class="ghost detail-back">
-          <span>←</span><span>Back</span>
+    <div class="app-card">
+        <h3>Management</h3>
+        <p class="muted small" style="margin-bottom:20px;">Manage your fleet configuration.</p>
+        
+        <button id="btnAddZone" class="item-card" style="width:100%;margin-bottom:10px;">
+            <div class="item-img" style="background:#333;">🔵</div>
+            <div class="item-content">
+                <div class="item-title">Add New Zone</div>
+                <div class="item-sub">Create geofenced areas</div>
+            </div>
+            <div style="opacity:0.5;">→</div>
         </button>
-        <span class="pill" id="h_zonePill">—</span>
-      </div>
 
-      <div style="margin-top:12px;">
-        <div class="detail-title" id="h_name">—</div>
-        <div class="detail-sub">ID: <span id="h_id">—</span></div>
-      </div>
-
-      <hr>
-
-      <div class="detail-grid">
-        <div class="muted">Zone</div><div id="h_zoneRow">—</div>
-        <div class="muted">Last Update</div><div id="h_updated">—</div>
-        <div class="muted">Coords</div><div id="h_coords">—</div>
-      </div>
-
-      <div class="detail-actions">
-        <button id="detailClose" class="ghost" style="flex:1;">Close</button>
-        <button id="detailFind" class="accent" style="flex:1;">Find on Map</button>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- Bottom nav -->
-<div class="bottom-nav" id="bottomNav">
-  <button class="nav-btn active" data-page="home">
-    <span class="icon">🏠</span><span>Home</span>
-  </button>
-  <button class="nav-btn" data-page="map">
-    <span class="icon">🗺️</span><span>Map</span>
-  </button>
-  <button class="nav-btn" data-page="add">
-    <span class="icon">＋</span><span>Add</span>
-  </button>
-  <button class="nav-btn" data-page="settings">
-    <span class="icon">⚙️</span><span>Settings</span>
-  </button>
-</div>
-
-<!-- Add Beacon Modal -->
-<div id="modalBackdrop" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:1000;align-items:center;justify-content:center;">
-  <div class="dialog">
-    <h3 style="margin:0 0 6px 0">Add Beacon 😊</h3>
-    <p class="muted" style="margin:0 0 10px 0">Enter Zone ID and Trolley ID. After Continue, click on the map to place the beacon.</p>
-
-    <label class="small muted">Zone ID</label>
-    <input id="m_zoneId" placeholder="e.g. T1-ZONE-A" style="width:100%;margin-bottom:10px;">
-
-    <label class="small muted">Trolley ID</label>
-    <input id="m_trolleyId" placeholder="e.g. T-TEST-002" style="width:100%;">
-
-    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:14px;">
-      <button id="m_cancel" class="ghost">Cancel</button>
-      <button id="m_continue" class="accent">Continue</button>
-    </div>
-  </div>
-</div>
-
-<!-- Add Zone Modal -->
-<div id="zoneModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:1000;align-items:center;justify-content:center;">
-  <div class="dialog">
-    <h3 style="margin:0 0 6px 0">Add Zone 🔵</h3>
-    <p class="muted small" style="margin:0 0 10px 0">
-      Enter a zone ID (e.g. T1-ZONE-A). After Continue, click on the map to set the zone centre.
-    </p>
-
-    <label class="small muted">Zone ID</label>
-    <input id="z_zoneName" placeholder="e.g. T1-ZONE-A" style="width:100%;margin-bottom:10px;">
-
-    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:14px;">
-      <button id="z_cancel" class="ghost">Cancel</button>
-      <button id="z_continue" class="accent">Continue</button>
-    </div>
-  </div>
-</div>
-
-<!-- Level picker modal -->
-<div id="levelModal">
-  <div class="dialog">
-    <h3 style="margin:0 0 6px 0">Select Level</h3>
-    <p class="muted small" style="margin:0 0 8px 0">
-      For now, each level simulates a different area in Singapore. Later you can map these to real building floors.
-    </p>
-
-    <div class="level-grid">
-      <button class="level-card" data-level="L1">
-        <div class="level-tag">L1</div>
-        <div class="level-title">Ground / Arrival Level</div>
-        <div class="level-sub">Bedok Reservoir / Tampines area</div>
-      </button>
-      <button class="level-card" data-level="L2">
-        <div class="level-tag">L2</div>
-        <div class="level-title">Departure Level</div>
-        <div class="level-sub">Changi Airport vicinity</div>
-      </button>
-      <button class="level-card" data-level="L3">
-        <div class="level-tag">L3</div>
-        <div class="level-title">Sky / Rooftop Level</div>
-        <div class="level-sub">Marina Bay / CBD</div>
-      </button>
+        <button id="btnRefresh" class="item-card" style="width:100%;">
+            <div class="item-img" style="background:#333;">↻</div>
+            <div class="item-content">
+                <div class="item-title">Sync Data</div>
+                <div class="item-sub" id="lastSyncText">Last sync: Never</div>
+            </div>
+        </button>
     </div>
 
-    <div style="display:flex;justify-content:flex-end;margin-top:12px;">
-      <button id="levelClose" class="ghost">Close</button>
+    <div class="app-card">
+        <h3>App Settings</h3>
+        <div style="margin-top:16px;display:flex;justify-content:space-between;align-items:center;">
+            <span>Dark Mode</span>
+            <span class="pill" style="background:var(--accent);color:black;">Always On</span>
+        </div>
     </div>
-  </div>
 </div>
 
-<!-- Confirm Delete -->
-<div id="confirm" class="confirm">
-  <div class="dialog">
-    <h3 style="margin:0 0 6px 0">Remove beacon?</h3>
-    <p class="muted" style="margin:0">This will permanently delete the beacon from the database.</p>
-    <div class="row" style="justify-content:flex-end;gap:8px;margin-top:12px;">
-      <button id="c_cancel" class="ghost">Cancel</button>
-      <button id="c_ok" class="danger">Delete</button>
+<!-- Navigation Dock -->
+<nav class="nav-dock">
+  <button class="nav-item active" data-page="home">🏠<span>Home</span></button>
+  <button class="nav-item" data-page="map">🗺️<span>Map</span></button>
+  <button class="nav-item" data-page="settings">⚙️<span>Settings</span></button>
+</nav>
+
+<!-- MODALS -->
+<div id="modalAdd" class="modal-backdrop">
+    <div class="modal-content">
+        <h3 style="margin-bottom:16px;">New Beacon</h3>
+        <label class="small muted">Zone ID</label>
+        <input id="inpZone" placeholder="e.g. ARRIVAL-A" style="margin-bottom:12px;">
+        <label class="small muted">Trolley ID</label>
+        <input id="inpId" placeholder="e.g. T-001">
+        <div style="display:flex;gap:10px;margin-top:20px;justify-content:flex-end;">
+            <button class="btn-ghost" onclick="closeModals()">Cancel</button>
+            <button class="btn-primary" id="btnAddConfirm">Place on Map</button>
+        </div>
     </div>
-  </div>
 </div>
 
-<!-- Finder overlay -->
-<div id="finder">
-  <div class="finder-title">
-    <div class="small muted" style="letter-spacing:.18em;text-transform:uppercase;color:#9ca3af;">Navigate to</div>
-    <div id="findTarget" style="font-size:24px;font-weight:800;margin-top:4px;color:#e5e7eb;">—</div>
-  </div>
-
-  <svg id="viz" viewBox="0 0 200 200" aria-label="Direction finder">
-    <circle cx="100" cy="100" r="84" fill="none" stroke="#1f2a44" stroke-width="12"/>
-    <circle cx="100" cy="100" r="22" fill="url(#youGrad)" stroke="#284265" stroke-width="1.5"/>
-    <g id="arrowSpin">
-      <polygon points="100,16 112,44 108,44 108,72 92,72 92,44 88,44" fill="#7c9cff" stroke="#aab6ff" stroke-width="1.2"/>
-    </g>
-    <defs>
-      <radialGradient id="youGrad" cx="50%" cy="45%" r="60%">
-        <stop offset="0%"  stop-color="#2dd4bf"/>
-        <stop offset="100%" stop-color="#0ea5e9"/>
-      </radialGradient>
-    </defs>
-  </svg>
-
-  <div class="finder-chip" id="findDistance">— m</div>
-  <div class="finder-cta">
-    <button id="findExit" class="ghost">Exit</button>
-    <button id="findRecenter" class="accent">Recenter</button>
-  </div>
-  <div class="small muted" style="margin-top:8px;color:#9ca3af;" id="findHint">Move your phone to calibrate direction…</div>
+<div id="modalZone" class="modal-backdrop">
+    <div class="modal-content">
+        <h3 style="margin-bottom:16px;">New Zone</h3>
+        <label class="small muted">Zone Name</label>
+        <input id="inpZoneName" placeholder="e.g. PARKING-B1">
+        <div style="display:flex;gap:10px;margin-top:20px;justify-content:flex-end;">
+            <button class="btn-ghost" onclick="closeModals()">Cancel</button>
+            <button class="btn-primary" id="btnAddZoneConfirm">Set Center</button>
+        </div>
+    </div>
 </div>
 
-<div id="toast" class="toast">Saved</div>
+<!-- NEW FINDER OVERLAY ("Flight Details Style") -->
+<div id="finder-overlay">
+    <div class="finder-panel">
+        <div style="margin-bottom:20px;font-size:18px;font-weight:600;color:white;opacity:0.9;" id="findTargetName">Trolley Details</div>
+
+        <!-- Toggles -->
+        <div class="finder-toggles">
+            <div class="finder-toggle-btn active">Distance</div>
+            <div class="finder-toggle-btn">Compass</div>
+        </div>
+
+        <!-- Data -->
+        <div class="finder-data-display">
+            <span class="finder-value" id="findDistVal">--</span>
+            <span class="finder-unit">m</span>
+        </div>
+
+        <!-- Compass Visual -->
+        <div class="finder-compass-wrapper">
+            <div class="compass-bg"></div>
+            <div class="compass-arrow" id="finderArrow"></div>
+        </div>
+
+        <!-- Ticks visual like the image -->
+        <div style="display:flex;gap:10px;opacity:0.3;margin-top:auto;margin-bottom:40px;">
+            <div style="width:2px;height:10px;background:white;"></div>
+            <div style="width:2px;height:15px;background:white;"></div>
+            <div style="width:2px;height:25px;background:white;"></div>
+            <div style="width:2px;height:15px;background:white;"></div>
+            <div style="width:2px;height:10px;background:white;"></div>
+        </div>
+
+        <!-- Floating X Button -->
+        <button class="finder-close-btn" id="btnStopFind">✕</button>
+    </div>
+</div>
+
+<!-- Toast -->
+<div id="toast" style="position:fixed;top:20px;left:50%;transform:translate(-50%, -100px);background:white;color:black;padding:10px 20px;border-radius:50px;font-weight:600;box-shadow:0 10px 30px rgba(0,0,0,0.5);transition:0.4s;z-index:3000;">Notification</div>
 
 <script>
-const API_URL = "/api/beacons";
-const ENABLE_POST = false;
-const AUTO_REFRESH_MS = 10000;
-const FIXED_ZONE_RADIUS = 50; // 50m blue circles (no UI text)
+// --- Logic ---
+const FIXED_ZONE_RADIUS = 50;
 
-let ui = null;
-if (window.uibuilder) ui = window.uibuilder;
-
-/* Map */
-const TP_CENTER = [1.3455, 103.9323];
-const map = L.map("map").setView(TP_CENTER, 17);
-L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-  maxZoom: 19, attribution: "&copy; OSM"
-}).addTo(map);
-const clusters = L.markerClusterGroup({ disableClusteringAtZoom: 19 });
-map.addLayer(clusters);
-
-/* Level presets */
-const LEVEL_VIEWS = {
-  L1: { center:[1.3455, 103.9323], zoom:17 },
-  L2: { center:[1.3644, 103.9915], zoom:16 },
-  L3: { center:[1.2830, 103.8600], zoom:16 }
-};
-function flyToLevel(level){
-  const v = LEVEL_VIEWS[level];
-  if(!v) return;
-  map.flyTo(v.center, v.zoom, { duration:1.2 });
-}
-
-/* State */
+let map = null;
+let clusters = null;
 let beacons = [];
-const idToMarker = new Map();
-let searchText = "";
-let zoneFilter = "";
-let placementMode = false;
-let pendingBeacon = null;
-let selectedId = null;
+let zones = {};
+let idToMarker = new Map();
+let zoneCircles = {};
 let selectedBeacon = null;
-let detailBeacon = null;
-
-/* zone coverage (logic only) */
-let zoneCenters = {};   // { zoneId: [lat,lng] }
-let zoneCircles = {};   // { zoneId: L.circle }
-let zonePlacementMode = false;
-let zonePlacementTarget = null;
-
-/* Finder state */
+let placementMode = null;
+let tempPayload = null;
 let watchId = null;
-let headingDeg = null;
-let userMarker = null;
-let targetLatLng = null;
-let orientationHandler = null;
 
-/* Helpers */
-function escapeH(s){
-  return String(s ?? "").replace(/[&<>"']/g, m => ({
-    "&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"
-  }[m] || ""));
-}
-function zoneMatches(b){
-  if(!zoneFilter) return true;
-  return String(b.zone||"").toLowerCase() === zoneFilter.toLowerCase();
-}
-function popupHtml(b){
-  return `<b>${escapeH(b.name)}</b> <span class="pill">${escapeH(b.zone)}</span><br><small>ID:${escapeH(b.id)}</small>`;
-}
-function fits(b){
-  if(!zoneMatches(b)) return false;
-  const text = ((b.name||"")+" "+(b.id||"")).toLowerCase();
-  const searchOK = !searchText || text.includes(searchText.toLowerCase());
-  return searchOK;
-}
-function toast(t){
-  const el = document.getElementById("toast");
-  el.textContent = t;
-  el.classList.add("show");
-  setTimeout(()=>el.classList.remove("show"),1500);
-}
-const toRad = d => d * Math.PI / 180;
-const toDeg = r => r * 180 / Math.PI;
-function haversine(aLat,aLng,bLat,bLng){
-  const R = 6371000;
-  const dLat = toRad(bLat-aLat), dLng = toRad(bLng-aLng);
-  const s = Math.sin(dLat/2)**2 +
-            Math.cos(toRad(aLat))*Math.cos(toRad(bLat))*Math.sin(dLng/2)**2;
-  return 2 * R * Math.asin(Math.sqrt(s));
-}
-function bearingBetween(aLat,aLng,bLat,bLng){
-  const y = Math.sin(toRad(bLng-aLng))*Math.cos(toRad(bLat));
-  const x = Math.cos(toRad(aLat))*Math.sin(toRad(bLat)) -
-            Math.sin(toRad(aLat))*Math.cos(toRad(bLat))*Math.cos(toRad(bLng-aLng));
-  return (toDeg(Math.atan2(y,x)) + 360) % 360;
-}
+// Get Trolley SVG String
+const getTrolleyIcon = () => document.getElementById('tpl-icon').innerHTML;
 
-/* Page switching */
-function setActivePage(page){
-  document.querySelectorAll(".page").forEach(p=>{
-    p.classList.toggle("active", p.id === "page-" + page);
-  });
-  document.querySelectorAll("#bottomNav .nav-btn").forEach(btn=>{
-    btn.classList.toggle("active", btn.dataset.page === page);
-  });
-  if(page === "map"){
-    setTimeout(()=>{ map.invalidateSize(); }, 200);
-  }
-}
-
-/* zones */
-function getKnownZones(){
-  const s = new Set();
-  beacons.forEach(b => { if (b.zone) s.add(b.zone); });
-  Object.keys(zoneCenters).forEach(z => { if (z) s.add(z); });
-  return Array.from(s).sort((a,b)=>a.localeCompare(b));
-}
-
-function refreshZoneLists(){
-  const zones = getKnownZones();
-
-  const zFilter = document.getElementById("zoneFilter");
-  const prevFilter = zoneFilter || "";
-  zFilter.innerHTML = '<option value="">All zones</option>' +
-    zones.map(z => `<option value="${escapeH(z)}">${escapeH(z)}</option>`).join("");
-  if(prevFilter && zones.includes(prevFilter)){
-    zFilter.value = prevFilter;
-  }else{
-    if(prevFilter) zoneFilter = "";
-    zFilter.value = "";
-  }
-
-  const quick = document.getElementById("quickFilters");
-  quick.innerHTML = "";
-  const makeBtn = (label, value) => {
-    const b = document.createElement("button");
-    b.className = "zf" + ((value === zoneFilter) ? " active" : "");
-    b.dataset.zone = value;
-    b.textContent = label;
-    return b;
-  };
-  quick.appendChild(makeBtn("All", ""));
-  zones.forEach(z=>{
-    quick.appendChild(makeBtn(z, z));
-  });
-
-  const centerSel = document.getElementById("zoneCenterSelect");
-  const prevC = centerSel.value;
-  centerSel.innerHTML = '<option value="">Select zone</option>' +
-    zones.map(z => `<option value="${escapeH(z)}">${escapeH(z)}</option>`).join("");
-  if(prevC && zones.includes(prevC)) centerSel.value = prevC;
-
-  document.getElementById("activeZonePill").textContent =
-    zoneFilter || "All zones";
-  document.getElementById("overviewZoneLine").textContent =
-    zoneFilter ? `Zone: ${zoneFilter}` : "All zones";
-}
-
-function updateZoneCircleVisibilityBasedOnFilter(){
-  for(const [zoneId, circle] of Object.entries(zoneCircles)){
-    if(!circle) continue;
-    if(!zoneFilter){
-      if(!map.hasLayer(circle)) circle.addTo(map);
-    }else if(zoneFilter === zoneId){
-      if(!map.hasLayer(circle)) circle.addTo(map);
-    }else{
-      if(map.hasLayer(circle)) map.removeLayer(circle);
-    }
-  }
-}
-
-function updateZoneCircle(zoneId){
-  const center = zoneCenters[zoneId];
-  const radiusMeters = FIXED_ZONE_RADIUS;
-
-  // No center = remove circle if it exists
-  if(!center){
-    const existing = zoneCircles[zoneId];
-    if(existing && map.hasLayer(existing)) map.removeLayer(existing);
-    zoneCircles[zoneId] = null;
-    updateZoneCircleVisibilityBasedOnFilter();
-    return;
-  }
-
-  let circle = zoneCircles[zoneId];
-
-  // Create circle if missing
-  if(!circle){
-    circle = L.circle(center, {
-      radius: radiusMeters,
-      color: "#3b82f6",
-      weight: 2,
-      fillColor: "#3b82f6",
-      fillOpacity: 0.15
+function init(){
+    // Map
+    map = L.map('map', { zoomControl: false }).setView([1.3455, 103.9323], 17);
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+        attribution: '&copy; OSM &copy; CartoDB', subdomains: 'abcd', maxZoom: 20
     }).addTo(map);
+    clusters = L.markerClusterGroup({ showCoverageOnHover: false, disableClusteringAtZoom: 19 });
+    map.addLayer(clusters);
 
-    // 🔵 Clicking the zone circle filters to that zone
-    circle.on("click", () => {
-      zoneFilter = zoneId;
+    // Inject Icon into Map Card
+    document.getElementById('cardIconContainer').innerHTML = getTrolleyIcon();
 
-      const sel = document.getElementById("zoneFilter");
-      if (sel) sel.value = zoneId;
-
-      render();
-    });
-
-    zoneCircles[zoneId] = circle;
-  }else{
-    // Just update existing circle
-    circle.setLatLng(center);
-    circle.setRadius(radiusMeters);
-  }
-
-  updateZoneCircleVisibilityBasedOnFilter();
-}
-
-/* detail panel */
-function showDetails(b){
-  selectedId = b.id;
-  selectedBeacon = b;
-  document.getElementById("detailsEmpty").style.display = "none";
-  const d = document.getElementById("details");
-  d.style.display = "block";
-  d.querySelector("#d_name").textContent = b.name || "—";
-  d.querySelector("#d_id").textContent = b.id || "—";
-  d.querySelector("#d_zone").textContent = b.zone || "—";
-  d.querySelector("#d_zoneDetail").textContent = b.zone || "—";
-  d.querySelector("#d_updated").textContent = b.lastUpdate || "—";
-  d.querySelector("#d_coords").textContent =
-    (b.lat!=null && b.lng!=null)
-      ? `${(+b.lat).toFixed(5)}, ${(+b.lng).toFixed(5)}`
-      : "—";
-}
-
-/* full detail page */
-function openDetailPage(b){
-  detailBeacon = b;
-  document.getElementById("h_name").textContent = b.name || "—";
-  document.getElementById("h_id").textContent = b.id || "—";
-  document.getElementById("h_zonePill").textContent = b.zone || "—";
-  document.getElementById("h_zoneRow").textContent = b.zone || "—";
-  document.getElementById("h_updated").textContent = b.lastUpdate || "—";
-  document.getElementById("h_coords").textContent =
-    (b.lat!=null && b.lng!=null)
-      ? `${(+b.lat).toFixed(5)}, ${(+b.lng).toFixed(5)}`
-      : "—";
-  setActivePage("detail");
-}
-document.getElementById("detailBack").onclick = () => setActivePage("home");
-document.getElementById("detailClose").onclick = () => setActivePage("home");
-document.getElementById("detailFind").onclick = () => {
-  if(!detailBeacon) return;
-  const b = detailBeacon;
-  selectedBeacon = b;
-  selectedId = b.id;
-  setActivePage("map");
-  setTimeout(()=>{
-    showDetails(b);
-    const m = idToMarker.get(b.id);
-    if(m){
-      map.setView([b.lat,b.lng], 18);
-      m.openPopup();
-    }
-  }, 350);
-};
-
-/* delete */
-const confirmBox = document.getElementById("confirm");
-document.getElementById("c_cancel").onclick = () =>
-  confirmBox.style.display = "none";
-document.getElementById("btnDelete").onclick = () => {
-  if(!selectedId) return;
-  confirmBox.style.display = "flex";
-};
-document.getElementById("c_ok").onclick = async () => {
-  const id = selectedId;
-  confirmBox.style.display = "none";
-  if(!id) return;
-
-  try{
-    if(!firebaseDb){ throw new Error("Firebase not initialised"); }
-    await firebaseDb.ref(`/Tracking/${id}`).remove();
-    toast("Beacon deleted from Firebase");
-  }catch(e){
-    console.error("Firebase delete error:", e);
-    toast("Delete failed: " + (e?.message || e));
-    return;
-  }
-
-  beacons = beacons.filter(b=>b.id!==id);
-  render();
-  document.getElementById("details").style.display = "none";
-  document.getElementById("detailsEmpty").style.display = "block";
-};
-
-/* stats */
-function renderStats(){
-  const total = beacons.filter(zoneMatches).length;
-  document.getElementById("totalCount").textContent = total;
-
-  const counts = {};
-  getKnownZones().forEach(z=>counts[z]=0);
-  beacons.forEach(b=>{
-    if(b.zone){
-      if(counts[b.zone] == null) counts[b.zone] = 0;
-      counts[b.zone]++;
-    }
-  });
-  const values = Object.values(counts);
-  const max = values.length ? Math.max(1, ...values) : 1;
-
-  const zEl = document.getElementById("zoneProgress");
-  zEl.innerHTML = "";
-  Object.entries(counts).forEach(([label,val])=>{
-    const row = document.createElement("div");
-    row.className = "progress-row";
-    row.innerHTML =
-      `<div class="progress-label">${escapeH(label)}</div>
-       <div class="progress-bar">
-         <div class="progress-fill" style="width:${(val/max)*100}%"></div>
-       </div>
-       <div class="small" style="width:34px;text-align:right">${val}</div>`;
-    zEl.appendChild(row);
-  });
-
-  document.getElementById("activeZonePill").textContent =
-    zoneFilter || "All zones";
-  document.getElementById("activeModeLabel").textContent = "Showing: Beacons";
-
-  const zoneFiltered = beacons.filter(zoneMatches);
-  const totalBeacons = zoneFiltered.length;
-  document.getElementById("statBeaconCount").textContent = totalBeacons;
-  const zonesWithActivity = new Set(beacons.map(b=>b.zone).filter(Boolean));
-  document.getElementById("statZoneCount").textContent =
-    zonesWithActivity.size;
-}
-
-/* markers & lists */
-function renderMarkers(){
-  clusters.clearLayers();
-  idToMarker.clear();
-  beacons.forEach(b=>{
-    if(!fits(b) || b.lat == null || b.lng == null) return;
-    const color = "#8b5cf6";
-    const m = L.circleMarker([b.lat,b.lng],{
-      radius:8,color,fillColor:color,fillOpacity:.95,weight:2
-    })
-      .on("click",()=>{ showDetails(b); m.openPopup(); })
-      .bindPopup(popupHtml(b));
-    idToMarker.set(b.id,m);
-    clusters.addLayer(m);
-  });
-
-  updateZoneCircleVisibilityBasedOnFilter();
-}
-
-function renderOverview(){
-  const listEl = document.getElementById("overviewList");
-  const emptyEl = document.getElementById("overviewEmpty");
-  listEl.innerHTML = "";
-  const filtered = beacons
-    .filter(fits)
-    .sort((a,b)=>String(a.name).localeCompare(String(b.name)));
-  document.getElementById("overviewCount").textContent =
-    `${filtered.length} shown`;
-
-  if(filtered.length===0){
-    emptyEl.style.display = "block";
-    return;
-  }
-  emptyEl.style.display = "none";
-
-  filtered.forEach(b=>{
-    const div = document.createElement("div");
-    div.className = "item";
-    div.innerHTML =
-      `<div class="row">
-         <div><b>${escapeH(b.name||"Beacon")}</b>
-           <span class="pill">${escapeH(b.zone||"-")}</span></div>
-         <div class="small muted">${escapeH(b.id||"-")}</div>
-       </div>
-       <div class="small muted">
-         ${(b.lat!=null&&b.lng!=null)
-           ?`${(+b.lat).toFixed(5)}, ${(+b.lng).toFixed(5)}`
-           :"—"} · ${escapeH(b.lastUpdate||"—")}
-       </div>`;
-    div.onclick = ()=>{
-      const m = idToMarker.get(b.id);
-      if(m){ map.panTo([b.lat,b.lng]); m.openPopup(); }
-      showDetails(b);
-    };
-    listEl.appendChild(div);
-  });
-}
-
-/* home list */
-function renderHome(){
-  const listEl = document.getElementById("homeBeaconList");
-  const emptyEl = document.getElementById("homeEmpty");
-  listEl.innerHTML = "";
-
-  const filtered = beacons
-    .filter(zoneMatches)
-    .sort((a,b)=>String(b.lastUpdate||"")
-      .localeCompare(String(a.lastUpdate||"")))
-    .slice(0,6);
-
-  document.getElementById("homeBeaconCounter").textContent =
-    `${filtered.length} items`;
-
-  if(filtered.length === 0){
-    emptyEl.style.display = "block";
-    return;
-  }
-  emptyEl.style.display = "none";
-
-  filtered.forEach(b=>{
-    const div = document.createElement("div");
-    div.className = "home-item";
-    div.innerHTML =
-      `<div class="row" style="align-items:center;gap:10px;">
-         <div class="home-avatar"><span>🛒</span></div>
-         <div style="flex:1;min-width:0;">
-           <b>${escapeH(b.name || "Trolley")}</b>
-           <div class="small muted">ID: ${escapeH(b.id || "-")}</div>
-         </div>
-         <span class="pill small">${escapeH(b.zone || "-")}</span>
-       </div>
-       <div class="small muted">
-         ${(b.lat!=null&&b.lng!=null)
-           ?`${(+b.lat).toFixed(5)}, ${(+b.lng).toFixed(5)}`
-           :"—"} · ${escapeH(b.lastUpdate||"—")}
-       </div>`;
-    div.onclick = ()=>openDetailPage(b);
-    listEl.appendChild(div);
-  });
-}
-
-function render(){
-  refreshZoneLists();
-  renderMarkers();
-  renderOverview();
-  renderStats();
-  renderHome();
-}
-
-/* REST fallback */
-async function fetchBeacons(){
-  try{
-    const r = await fetch(API_URL);
-    if(!r.ok) throw 0;
-    const j = await r.json();
-    return Array.isArray(j)?j:[];
-  }catch{
-    return [];
-  }
-}
-async function refresh(){
-  const fetched = await fetchBeacons();
-  const mapB = new Map(beacons.map(b=>[b.id,b]));
-  fetched.forEach(fb=>mapB.set(fb.id,fb));
-  beacons = [...mapB.values()];
-  document.getElementById("lastSync").textContent =
-    "Last sync: " + new Date().toLocaleTimeString();
-  render();
-}
-
-/* Firebase write */
-let firebaseDb = null;
-
-async function writeToFirebaseRec(payload){
-  if(!firebaseDb){
-    console.warn("No Firebase DB (likely missing config)");
-    return;
-  }
-  const id = payload.trolleyId || payload.id;
-  if(!id) return;
-  const obj = {
-    zoneId: payload.zoneId || "",
-    trolleyId: id,
-    latitude: payload.latitude ?? null,
-    longitude: payload.longitude ?? null,
-    rssi: payload.rssi ?? null,
-    timestamp: payload.timestamp || new Date().toISOString()
-  };
-  try{
-    await firebaseDb.ref(`/Tracking/${id}`).set(obj);
-  }catch(e){
-    console.error("Firebase write error:", e);
-    toast("Firebase write error: " + e.message);
-  }
-}
-
-async function writeZoneToFirebase(zoneId){
-  if(!firebaseDb) return;
-  const center = zoneCenters[zoneId] || null;
-  const payload = {
-    zoneId,
-    centerLat: center ? center[0] : null,
-    centerLng: center ? center[1] : null,
-    radiusMeters: FIXED_ZONE_RADIUS,
-    enabled: !!center
-  };
-  try{
-    await firebaseDb.ref(`/Zones/${zoneId}`).set(payload);
-  }catch(e){
-    console.error("Zone write error:", e);
-    toast("Zone save error: " + e.message);
-  }
-}
-
-/* UI bindings */
-document.getElementById("search").oninput = e=>{
-  searchText = e.target.value.trim();
-  render();
-};
-document.getElementById("zoneFilter").onchange = e=>{
-  zoneFilter = e.target.value.trim();
-  render();
-};
-document.getElementById("bottomNav").addEventListener("click", e=>{
-  const btn = e.target.closest(".nav-btn");
-  if(!btn) return;
-  setActivePage(btn.dataset.page);
-});
-document.getElementById("quickFilters").addEventListener("click", e=>{
-  const btn = e.target.closest(".zf");
-  if(!btn) return;
-  zoneFilter = btn.dataset.zone || "";
-  render();
-});
-
-/* add beacon modal */
-const modal = document.getElementById("modalBackdrop");
-const banner = document.getElementById("placementBanner");
-const zoneBanner = document.getElementById("zonePlacementBanner");
-document.getElementById("addBtn").onclick =
-  () => { modal.style.display = "flex"; };
-document.getElementById("m_cancel").onclick =
-  () => { modal.style.display = "none"; };
-document.getElementById("m_continue").onclick = () => {
-  const zoneId = document.getElementById("m_zoneId").value.trim();
-  const trolleyId = document.getElementById("m_trolleyId").value.trim();
-  if(!zoneId || !trolleyId){
-    toast("Please enter Zone ID and Trolley ID");
-    return;
-  }
-  modal.style.display = "none";
-  placementMode = true;
-  pendingBeacon = { zoneId, trolleyId };
-  banner.style.display = "block";
-
-  if(!zoneCenters[zoneId]) zoneCenters[zoneId] = null;
-  render();
-};
-
-/* add zone modal */
-const zoneModal = document.getElementById("zoneModal");
-document.getElementById("addZoneBtn").onclick =
-  () => { zoneModal.style.display = "flex"; };
-document.getElementById("z_cancel").onclick =
-  () => { zoneModal.style.display = "none"; };
-document.getElementById("z_continue").onclick = () => {
-  const z = document.getElementById("z_zoneName").value.trim();
-  if(!z){
-    toast("Please enter a zone ID");
-    return;
-  }
-
-  if(zoneCenters[z] === undefined) zoneCenters[z] = null;
-  refreshZoneLists();
-
-  zoneModal.style.display = "none";
-  setActivePage("map");
-  zonePlacementTarget = z;
-  zonePlacementMode = true;
-  zoneBanner.style.display = "block";
-  toast(`Click on the map to set "${z}" centre`);
-};
-
-window.onkeydown = e => {
-  if(e.key === "Escape"){
-    placementMode = false;
-    pendingBeacon = null;
-    banner.style.display = "none";
-    zonePlacementMode = false;
-    zonePlacementTarget = null;
-    zoneBanner.style.display = "none";
-    modal.style.display = "none";
-    zoneModal.style.display = "none";
-    document.getElementById("levelModal").style.display = "none";
-  }
-};
-
-/* level modal */
-const levelModal = document.getElementById("levelModal");
-document.getElementById("levelBtn").onclick =
-  () => { levelModal.style.display = "flex"; };
-document.getElementById("levelClose").onclick =
-  () => { levelModal.style.display = "none"; };
-document.querySelectorAll(".level-card").forEach(btn=>{
-  btn.onclick = () => {
-    const lvl = btn.dataset.level;
-    flyToLevel(lvl);
-    levelModal.style.display = "none";
-    setActivePage("map");
-  };
-});
-
-/* zone centre button */
-document.getElementById("zoneCenterBtn").onclick = () => {
-  const sel = document.getElementById("zoneCenterSelect");
-  const z = sel.value.trim();
-  if(!z){
-    toast("Select a zone first");
-    return;
-  }
-  if(zoneCenters[z] === undefined) zoneCenters[z] = null;
-  zonePlacementTarget = z;
-  zonePlacementMode = true;
-  zoneBanner.style.display = "block";
-  toast(`Click on the map to set "${z}" centre`);
-};
-
-/* map click */
-map.on("click",async e=>{
-  if(zonePlacementMode && zonePlacementTarget){
-    const center = [e.latlng.lat, e.latlng.lng];
-    zoneCenters[zonePlacementTarget] = center;
-    toast(`Zone centre set for ${zonePlacementTarget}`);
-    zonePlacementMode = false;
-    zoneBanner.style.display = "none";
-
-    updateZoneCircle(zonePlacementTarget);
-    writeZoneToFirebase(zonePlacementTarget);
-    render();
-    return;
-  }
-
-  if(!placementMode || !pendingBeacon) return;
-  placementMode = false;
-  banner.style.display = "none";
-
-  const { zoneId, trolleyId } = pendingBeacon;
-  const name = `${zoneId} • ${trolleyId}`;
-  const nowIso = new Date().toISOString();
-
-  const b = {
-    id: trolleyId,
-    name,
-    zone: zoneId,
-    lat: e.latlng.lat,
-    lng: e.latlng.lng,
-    lastUpdate: nowIso
-  };
-
-  beacons.push(b);
-  render();
-  showDetails(b);
-
-  const fbPayload = {
-    zoneId,
-    trolleyId,
-    latitude: b.lat,
-    longitude: b.lng,
-    rssi: -24,
-    timestamp: nowIso
-  };
-
-  writeToFirebaseRec(fbPayload);
-
-  try{
-    if(ui && typeof ui.send === "function"){
-      ui.send({ payload: fbPayload });
-      toast("Beacon sent (uibuilder + Firebase)");
-    }else if(window.uibuilder && typeof window.uibuilder.send === "function"){
-      window.uibuilder.send({ payload: fbPayload });
-      toast("Beacon sent (uibuilder + Firebase)");
-    }else{
-      toast("Saved to Firebase");
-    }
-  }catch(err){
-    console.warn("uibuilder send failed", err);
-  }
-
-  pendingBeacon = null;
-});
-
-/* finder */
-const finderEl = document.getElementById("finder");
-const findTargetEl = document.getElementById("findTarget");
-const findDistanceEl = document.getElementById("findDistance");
-const findHintEl = document.getElementById("findHint");
-const arrowSpin = document.getElementById("arrowSpin");
-function setArrowRotation(deg){ arrowSpin.style.transform = `rotate(${deg}deg)`; }
-function varAccent2(){
-  return getComputedStyle(document.documentElement)
-    .getPropertyValue('--accent-2').trim() || '#22c55e';
-}
-function startFinder(beacon){
-  if(!beacon || beacon.lat==null || beacon.lng==null){
-    toast("Beacon has no coordinates");
-    return;
-  }
-  targetLatLng = [+beacon.lat, +beacon.lng];
-  findTargetEl.textContent = beacon.name || beacon.id || "Target";
-  finderEl.style.display = "flex";
-  map.panTo(targetLatLng);
-
-  if(!navigator.geolocation){
-    findHintEl.textContent = "Geolocation not supported.";
-    return;
-  }
-
-  userMarker = userMarker || L.circleMarker(map.getCenter(), {
-    radius:7,color:varAccent2(),fillColor:varAccent2(),fillOpacity:.95
-  }).addTo(map);
-
-  watchId = navigator.geolocation.watchPosition(pos=>{
-    const { latitude, longitude, heading } = pos.coords;
-    const aLat = latitude, aLng = longitude;
-    const [bLat,bLng] = targetLatLng;
-    const dist = haversine(aLat,aLng,bLat,bLng);
-    const bearing = bearingBetween(aLat,aLng,bLat,bLng);
-    const deviceHeading = (headingDeg!=null)
-      ? headingDeg
-      : (Number.isFinite(heading) ? heading : null);
-    const relative = (deviceHeading!=null)
-      ? ((bearing - deviceHeading + 360) % 360)
-      : bearing;
-    setArrowRotation(relative);
-    findDistanceEl.textContent = dist>1000
-      ? (dist/1000).toFixed(2)+" km"
-      : Math.round(dist)+" m";
-    userMarker.setLatLng([aLat,aLng]);
-  }, err=>{
-    findHintEl.textContent = "Location error: " + err.message;
-  }, {enableHighAccuracy:true,maximumAge:1000,timeout:10000});
-
-  orientationHandler = e=>{
-    if(typeof e.webkitCompassHeading === "number"){
-      headingDeg = e.webkitCompassHeading;
-    }else if(e.absolute && e.alpha!=null){
-      headingDeg = 360 - e.alpha;
-    }
-  };
-  if(window.DeviceOrientationEvent){
-    if(typeof DeviceOrientationEvent.requestPermission === "function"){
-      DeviceOrientationEvent.requestPermission()
-        .then(state=>{
-          if(state === "granted"){
-            window.addEventListener("deviceorientation",
-                                    orientationHandler,true);
-          }else{
-            findHintEl.textContent =
-              "Compass permission denied; arrow uses map north.";
-          }
-        }).catch(()=>{
-          findHintEl.textContent =
-            "Compass not available; arrow uses map north.";
-        });
-    }else{
-      window.addEventListener("deviceorientation",orientationHandler,true);
-    }
-  }else{
-    findHintEl.textContent = "No compass API; arrow uses map north.";
-  }
-}
-function stopFinder(){
-  finderEl.style.display = "none";
-  if(watchId!=null){
-    navigator.geolocation.clearWatch(watchId);
-    watchId = null;
-  }
-  if(orientationHandler){
-    window.removeEventListener("deviceorientation",
-                               orientationHandler,true);
-    orientationHandler = null;
-  }
-  headingDeg = null;
-  targetLatLng = null;
-}
-document.getElementById("btnSearch").onclick =
-  () => { if(selectedBeacon) startFinder(selectedBeacon); };
-document.getElementById("findExit").onclick = () => stopFinder();
-document.getElementById("findRecenter").onclick = () => {
-  if(userMarker){ map.panTo(userMarker.getLatLng()); }
-};
-
-/* uibuilder listener */
-if (ui && typeof ui.onChange === "function") {
-  ui.onChange('msg', (msg) => {
-    console.log('uibuilder msg received:', msg);
-
-    if (msg.topic === 'beacon/bulkUpdate' && Array.isArray(msg.payload)) {
-      msg.payload.forEach(p => {
-        const id = p.trolleyId || p.id;
-        if (!id) return;
-        const idx = beacons.findIndex(b => b.id === id);
-        const b = {
-          id,
-          name: (p.zoneId ? p.zoneId + ' • ' : '') + id,
-          zone: p.zoneId || '',
-          lat: p.latitude ?? p.lat,
-          lng: p.longitude ?? p.lng,
-          lastUpdate: p.timestamp || new Date().toISOString()
+    // Firebase
+    try {
+        const firebaseConfig = {
+            apiKey: "AIzaSyCYE1hpoQV_QlfhQz7hlZResGuunbY1DG0",
+            authDomain: "trolley-tracking-678c5.firebaseapp.com",
+            databaseURL: "https://trolley-tracking-678c5-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "trolley-tracking-678c5",
+            storageBucket: "trolley-tracking-678c5.appspot.com",
+            messagingSenderId: "830477552391",
+            appId: "1:830477552391:web:558930d01a8f594a3953a2"
         };
-        if (idx >= 0) beacons[idx] = { ...beacons[idx], ...b };
-        else beacons.push(b);
-      });
-      render();
-    }
+        if (firebase.apps.length === 0) firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+        
+        db.ref("/Tracking").on("value", snap => {
+            const data = snap.val() || {};
+            beacons = Object.keys(data).map(k => {
+                const v = data[k];
+                return {
+                    id: k,
+                    name: v.zoneId ? `${v.zoneId} • ${k}` : k,
+                    zone: v.zoneId || "",
+                    lat: v.latitude || v.lat,
+                    lng: v.longitude || v.lng
+                };
+            });
+            updateUI();
+        });
 
-    if (msg.topic === 'beacon/update' && msg.payload) {
-      const p = msg.payload;
-      const id = p.trolleyId || p.id;
-      if (!id) return;
-      const idx = beacons.findIndex(b => b.id === id);
-      const b = {
-        id,
-        name: (p.zoneId ? p.zoneId + ' • ' : '') + id,
-        zone: p.zoneId || '',
-        lat: p.latitude ?? p.lat,
-        lng: p.longitude ?? p.lng,
-        lastUpdate: p.timestamp || new Date().toISOString()
-      };
-      if (idx >= 0) beacons[idx] = { ...beacons[idx], ...b };
-      else beacons.push(b);
-      render();
-    }
-  });
+        db.ref("/Zones").on("value", snap => {
+            const data = snap.val() || {};
+            zones = {};
+            Object.keys(data).forEach(k => {
+                if(data[k].centerLat) zones[k] = [data[k].centerLat, data[k].centerLng];
+            });
+            updateUI();
+        });
+    } catch(e) { console.error(e); showToast("Firebase Error"); }
+
+    setupInteractions();
 }
 
-/* dark mode */
-const darkToggle = document.getElementById("darkToggle");
-const savedTheme = localStorage.getItem("theme");
-if(savedTheme === "dark"){
-  document.body.classList.add("dark");
-  darkToggle.checked = true;
+function updateUI(){
+    renderList();
+    renderMap();
+    document.getElementById("statBeaconCount").innerText = beacons.length;
+    document.getElementById("statZoneCount").innerText = Object.keys(zones).length || new Set(beacons.map(b=>b.zone)).size;
+    document.getElementById('lastSyncText').innerText = "Last sync: " + new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
 }
-darkToggle.onchange = () => {
-  const isDark = darkToggle.checked;
-  document.body.classList.toggle("dark", isDark);
-  localStorage.setItem("theme", isDark ? "dark" : "light");
+
+function renderList(){
+    const listEl = document.getElementById("homeList");
+    const filter = document.getElementById("zoneFilter").value;
+    const filtered = beacons.filter(b => !filter || b.zone === filter);
+    
+    document.getElementById("listCount").innerText = `${filtered.length} items`;
+    document.getElementById("homeEmpty").style.display = filtered.length ? 'none' : 'block';
+    
+    listEl.innerHTML = filtered.map(b => `
+        <div class="item-card" onclick="viewOnMap('${b.id}')">
+            <div class="item-img">${getTrolleyIcon()}</div>
+            <div class="item-content">
+                <div class="item-title">${b.zone || 'Unassigned'}</div>
+                <div class="item-sub">ID: ${b.id}</div>
+            </div>
+            <div class="item-action">→</div>
+        </div>
+    `).join('');
+
+    const sel = document.getElementById("zoneFilter");
+    const knownZones = [...new Set([...beacons.map(b=>b.zone), ...Object.keys(zones)])].filter(Boolean).sort();
+    const curr = sel.value;
+    sel.innerHTML = `<option value="">All Zones</option>` + knownZones.map(z => `<option value="${z}">${z}</option>`).join('');
+    sel.value = curr;
+}
+
+function renderMap(){
+    clusters.clearLayers();
+    idToMarker.clear();
+    beacons.forEach(b => {
+        if(!b.lat || !b.lng) return;
+        const m = L.circleMarker([b.lat, b.lng], {
+            radius: 8, color: '#FF453A', fillColor: '#FF453A', fillOpacity: 0.9, weight: 2
+        }).bindPopup(`<b>${b.id}</b><br>${b.zone}`);
+        m.on('click', () => selectBeacon(b));
+        clusters.addLayer(m);
+        idToMarker.set(b.id, m);
+    });
+    Object.keys(zoneCircles).forEach(k => map.removeLayer(zoneCircles[k]));
+    zoneCircles = {};
+    const filter = document.getElementById("zoneFilter").value;
+    Object.keys(zones).forEach(zKey => {
+        if(filter && filter !== zKey) return;
+        zoneCircles[zKey] = L.circle(zones[zKey], {
+            radius: FIXED_ZONE_RADIUS, color: '#30d158', fillColor: '#30d158', fillOpacity: 0.1, weight: 1, dashArray: '5, 5'
+        }).addTo(map);
+    });
+}
+
+function setupInteractions(){
+    document.querySelectorAll('.nav-item').forEach(btn => {
+        btn.onclick = () => {
+            document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+            btn.classList.add('active');
+            document.getElementById(`page-${btn.dataset.page}`).classList.add('active');
+            if(btn.dataset.page === 'map') setTimeout(()=> map.invalidateSize(), 300);
+        };
+    });
+
+    document.getElementById('hdr-add').onclick = () => document.getElementById('modalAdd').style.display = 'flex';
+    document.getElementById('btnAddZone').onclick = () => document.getElementById('modalZone').style.display = 'flex';
+    
+    document.getElementById('btnAddConfirm').onclick = () => {
+        const z = document.getElementById('inpZone').value;
+        const id = document.getElementById('inpId').value;
+        if(!z || !id) return showToast("Fill all fields");
+        tempPayload = { zoneId: z, trolleyId: id };
+        placementMode = 'beacon';
+        closeModals();
+        switchToMapAndGuide("Tap map to place trolley");
+    };
+
+    document.getElementById('btnAddZoneConfirm').onclick = () => {
+        const z = document.getElementById('inpZoneName').value;
+        if(!z) return showToast("Name required");
+        tempPayload = { zoneId: z };
+        placementMode = 'zone';
+        closeModals();
+        switchToMapAndGuide("Tap map to set zone center");
+    };
+
+    map.on('click', e => {
+        if(!placementMode) return;
+        const { lat, lng } = e.latlng;
+        if(placementMode === 'beacon'){
+            firebase.database().ref(`/Tracking/${tempPayload.trolleyId}`).set({
+                ...tempPayload, latitude: lat, longitude: lng, timestamp: new Date().toISOString()
+            });
+            showToast("Beacon Added!");
+        } else if (placementMode === 'zone'){
+            firebase.database().ref(`/Zones/${tempPayload.zoneId}`).set({
+                zoneId: tempPayload.zoneId, centerLat: lat, centerLng: lng
+            });
+            showToast("Zone Created!");
+        }
+        placementMode = null;
+    });
+
+    document.getElementById('mapSearch').oninput = (e) => {
+        const term = e.target.value.toLowerCase();
+        const found = beacons.find(b => b.id.toLowerCase().includes(term) || b.zone.toLowerCase().includes(term));
+        if(found) selectBeacon(found);
+    };
+    
+    document.getElementById('mc_close').onclick = () => document.getElementById('mapCard').style.transform = 'translateY(150%)';
+    document.getElementById('mc_del').onclick = () => {
+        if(confirm("Delete this beacon?")){
+            firebase.database().ref(`/Tracking/${selectedBeacon.id}`).remove();
+            document.getElementById('mapCard').style.transform = 'translateY(150%)';
+        }
+    };
+    document.getElementById('mc_find').onclick = startCompass;
+    document.getElementById('zoneFilter').onchange = updateUI;
+}
+
+function switchToMapAndGuide(msg){
+    document.querySelector('[data-page="map"]').click();
+    showToast(msg);
+}
+function viewOnMap(id){
+    const b = beacons.find(x => x.id === id);
+    if(b){
+        document.querySelector('[data-page="map"]').click();
+        setTimeout(() => selectBeacon(b), 400);
+    }
+}
+function selectBeacon(b){
+    selectedBeacon = b;
+    map.flyTo([b.lat, b.lng], 18);
+    document.getElementById('mc_name').innerText = b.id;
+    document.getElementById('mc_zone').innerText = b.zone || "No Zone";
+    document.getElementById('mapCard').style.transform = 'translateY(0)';
+}
+function closeModals(){ document.querySelectorAll('.modal-backdrop').forEach(m => m.style.display = 'none'); }
+function showToast(msg){
+    const t = document.getElementById('toast');
+    t.innerText = msg;
+    t.style.transform = 'translate(-50%, 20px)';
+    setTimeout(() => t.style.transform = 'translate(-50%, -100px)', 3000);
+}
+
+// --- COMPASS LOGIC ---
+function startCompass(){
+    if(!selectedBeacon) return;
+    
+    // Hide map card, show overlay
+    document.getElementById('mapCard').style.transform = 'translateY(150%)';
+    const overlay = document.getElementById('finder-overlay');
+    overlay.style.display = 'flex';
+    
+    // Small delay for animation to trigger
+    requestAnimationFrame(() => {
+        overlay.classList.add('active');
+    });
+
+    document.getElementById('findTargetName').innerText = "Tracking: " + selectedBeacon.id;
+
+    if(navigator.geolocation){
+        watchId = navigator.geolocation.watchPosition(processPosition, console.error, {enableHighAccuracy:true});
+        window.addEventListener('deviceorientation', processOrientation, true);
+    }
+}
+
+document.getElementById('btnStopFind').onclick = () => {
+    const overlay = document.getElementById('finder-overlay');
+    overlay.classList.remove('active');
+    
+    setTimeout(() => {
+        overlay.style.display = 'none';
+    }, 500); // Wait for transition
+
+    if(watchId) navigator.geolocation.clearWatch(watchId);
+    window.removeEventListener('deviceorientation', processOrientation);
 };
 
-/* Firebase init */
-(function initFirebase(){
-  const firebaseConfig = {
-    apiKey: "AIzaSyCYE1hpoQV_QlfhQz7hlZResGuunbY1DG0",
-    authDomain: "trolley-tracking-678c5.firebaseapp.com",
-    databaseURL: "https://trolley-tracking-678c5-default-rtdb.asia-southeast1.firebasedatabase.app",
-    projectId: "trolley-tracking-678c5",
-    storageBucket: "trolley-tracking-678c5.appspot.com",
-    messagingSenderId: "830477552391",
-    appId: "1:830477552391:web:558930d01a8f594a3953a2",
-    measurementId: "G-RQ00F6KMXC"
-  };
+let currentHeading = 0;
+function processOrientation(e){
+    if(e.webkitCompassHeading) currentHeading = e.webkitCompassHeading;
+    else if(e.alpha) currentHeading = 360 - e.alpha;
+}
+function processPosition(pos){
+    const { latitude, longitude } = pos.coords;
+    const destLat = selectedBeacon.lat;
+    const destLng = selectedBeacon.lng;
+    
+    const R = 6371e3;
+    const φ1 = latitude * Math.PI/180, φ2 = destLat * Math.PI/180;
+    const Δφ = (destLat-latitude) * Math.PI/180, Δλ = (destLng-longitude) * Math.PI/180;
+    const a = Math.sin(Δφ/2)**2 + Math.cos(φ1)*Math.cos(φ2) * Math.sin(Δλ/2)**2;
+    const d = R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    
+    document.getElementById('findDistVal').innerText = Math.round(d);
 
-  try{
-    if (firebase.apps.length === 0) firebase.initializeApp(firebaseConfig);
-    firebaseDb = firebase.database();
+    const y = Math.sin(Δλ) * Math.cos(φ2);
+    const x = Math.cos(φ1)*Math.sin(φ2) - Math.sin(φ1)*Math.cos(φ2)*Math.cos(Δλ);
+    const brng = (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
+    const rotation = brng - currentHeading;
+    
+    document.getElementById('finderArrow').style.transform = `rotate(${rotation}deg)`;
+}
 
-    const ref = firebaseDb.ref("/Tracking");
-    ref.on("value",(snap)=>{
-      const data = snap.val() || {};
-      const arr = [];
-      for(const id in data){
-        const v = data[id] || {};
-        const lat = v.latitude ?? v.lat ?? null;
-        const lng = v.longitude ?? v.lng ?? null;
-        arr.push({
-          id,
-          name: (v.zoneId ? `${v.zoneId} • ` : "") + id,
-          zone: v.zoneId || v.zone || "",
-          lat,
-          lng,
-          lastUpdate: v.timestamp || v.lastUpdate || ""
-        });
-      }
-      beacons = arr;
-      document.getElementById("lastSync").textContent =
-        "Last sync: " + new Date().toLocaleTimeString();
-      render();
-    },(err)=>{
-      console.error("Firebase read error:", err);
-      toast("Firebase read error: " + err.message);
-    });
-
-    const zref = firebaseDb.ref("/Zones");
-    zref.on("value",(snap)=>{
-      const data = snap.val() || {};
-      zoneCenters = {};
-      zoneCircles = {};
-      for(const zoneId in data){
-        const z = data[zoneId];
-        if(z && z.centerLat != null && z.centerLng != null){
-          zoneCenters[zoneId] = [z.centerLat, z.centerLng];
-          updateZoneCircle(zoneId);
-        }else{
-          zoneCenters[zoneId] = null;
-        }
-      }
-      render();
-    });
-
-  }catch(e){
-    console.error("Firebase init error:", e);
-    toast("Firebase init error — see console");
-  }
-})();
-
-/* boot */
-refresh();
-setInterval(refresh, AUTO_REFRESH_MS);
-setActivePage("home");
+window.onload = init;
 </script>
 </body>
 </html>
