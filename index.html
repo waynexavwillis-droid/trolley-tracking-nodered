@@ -1,10 +1,9 @@
-
 <!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8" />
 <title>Trolley Tracker • Premium</title>
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 
@@ -15,424 +14,435 @@
 <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css">
 <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
 
-<!-- Firebase -->
 <script src="https://www.gstatic.com/firebasejs/11.0.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/11.0.1/firebase-database-compat.js"></script>
 
-<!-- Google Fonts -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 
 <style>
 :root {
-  /* App Colors - Dark Mode Default */
-  --bg-app: #0f0f11;
-  --bg-panel: #1c1c1e;
-  --bg-card: #262629;
+  /* --- PREMIUM PALETTE --- */
+  --bg-body: #000000;
+  --bg-glass: rgba(22, 22, 24, 0.75);
+  --bg-glass-heavy: rgba(22, 22, 24, 0.92);
+  --bg-card: rgba(255, 255, 255, 0.03);
+  --bg-surface: #1C1C1E;
   
-  --text-main: #ffffff;
-  --text-muted: #9ca3af;
+  --text-primary: #FFFFFF;
+  --text-secondary: #8E8E93;
+  --text-tertiary: #48484A;
   
-  --accent: #F2994A; 
-  --accent-grad: linear-gradient(135deg, #F2994A 0%, #F2C94C 100%);
-  --bluetooth: #007AFF;
+  /* "Molten Gold" Accent */
+  --accent: #FF9F0A; 
+  --accent-glow: rgba(255, 159, 10, 0.4);
+  --accent-grad: linear-gradient(135deg, #FFD60A 0%, #FF9F0A 100%);
   
-  --danger: #ff453a;
-  --glass: rgba(20, 20, 20, 0.65);
-  --glass-border: rgba(255,255,255,0.08);
+  /* Status Colors */
+  --success: #30D158;
+  --danger: #FF453A;
+  --blue: #0A84FF;
+
+  --border-subtle: rgba(255, 255, 255, 0.08);
+  --shadow-soft: 0 8px 24px rgba(0,0,0,0.4);
+  --shadow-glow: 0 0 20px var(--accent-glow);
   
-  --radius-l: 32px;
-  --radius-m: 20px;
+  --radius-xl: 32px;
+  --radius-l: 24px;
+  --radius-m: 16px;
   
-  --anim: all 0.4s cubic-bezier(0.19, 1, 0.22, 1);
+  --anim-spring: cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 
 body {
   margin: 0;
-  background-color: var(--bg-app);
-  color: var(--text-main);
+  background-color: var(--bg-body);
+  /* Subtle background gradient for depth */
+  background-image: radial-gradient(circle at 50% 0%, #1a1a1a 0%, #000000 100%);
+  color: var(--text-primary);
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
   height: 100vh;
   overflow: hidden;
+  font-size: 15px;
 }
 
-/* --- SVG Icon Class --- */
-.trolley-icon-svg {
-    width: 100%; height: 100%;
-    display: block;
+/* --- UI UTILITIES --- */
+.trolley-icon-svg { width: 100%; height: 100%; display: block; }
+h1, h2, h3 { margin: 0; font-weight: 600; letter-spacing: -0.03em; }
+.muted { color: var(--text-secondary); }
+.small { font-size: 12px; letter-spacing: 0.02em; }
+
+/* Glassmorphism Card */
+.app-card {
+  background: var(--bg-card);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-radius: var(--radius-l);
+  padding: 24px;
+  margin-bottom: 24px;
+  border: 1px solid var(--border-subtle);
+  box-shadow: var(--shadow-soft);
 }
 
-/* --- Typography --- */
-h1, h2, h3 { margin: 0; font-weight: 700; letter-spacing: -0.02em; }
-.small { font-size: 13px; }
-.muted { color: var(--text-muted); }
+/* Pills */
 .pill {
-  padding: 4px 12px;
-  background: rgba(255,255,255,0.1);
+  padding: 6px 14px;
+  background: rgba(255, 159, 10, 0.15);
+  border: 1px solid rgba(255, 159, 10, 0.3);
   border-radius: 100px;
   font-size: 11px;
-  font-weight: 600;
+  font-weight: 700;
+  color: var(--accent);
+  text-transform: uppercase;
   letter-spacing: 0.05em;
-  backdrop-filter: blur(4px);
 }
 
-/* --- Buttons & Inputs --- */
-button { border: none; cursor: pointer; font-family: inherit; transition: var(--anim); outline: none; }
-button:active { transform: scale(0.96); }
+/* --- BUTTONS --- */
+button { border: none; cursor: pointer; font-family: inherit; transition: all 0.2s var(--anim-spring); outline: none; }
+button:active { transform: scale(0.94); }
 
 .btn-primary {
-  background: var(--accent-grad); color: black;
-  padding: 12px 24px; border-radius: 100px;
-  font-weight: 700; font-size: 14px;
-  box-shadow: 0 8px 20px rgba(242, 153, 74, 0.3);
+  background: var(--accent-grad); 
+  color: black;
+  padding: 14px 28px; 
+  border-radius: 100px;
+  font-weight: 600; font-size: 15px;
+  box-shadow: 0 4px 15px rgba(255, 159, 10, 0.3);
+  border: 1px solid rgba(255,255,255,0.2);
 }
+.btn-primary:hover { box-shadow: 0 8px 25px rgba(255, 159, 10, 0.5); }
+
 .btn-ghost {
-  background: rgba(255,255,255,0.08); color: var(--text-main);
+  background: rgba(255,255,255,0.06); 
+  color: var(--text-primary);
   padding: 10px 20px; border-radius: 100px;
   font-size: 13px; font-weight: 500;
+  border: 1px solid transparent;
 }
+.btn-ghost:hover { background: rgba(255,255,255,0.1); border-color: var(--border-subtle); }
+
 .btn-blue {
-    background: var(--bluetooth); color: white;
-    padding: 12px 24px; border-radius: 100px;
-    font-size: 14px; font-weight: 600;
-    display: flex; align-items: center; gap: 8px;
-    box-shadow: 0 4px 15px rgba(0, 122, 255, 0.4);
+    background: var(--blue); color: white;
+    padding: 14px 28px; border-radius: 100px;
+    font-size: 15px; font-weight: 600;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    box-shadow: 0 4px 20px rgba(10, 132, 255, 0.4);
 }
 
 .btn-icon {
-  width: 44px; height: 44px; border-radius: 50%;
-  background: var(--bg-card);
+  width: 48px; height: 48px; border-radius: 50%;
+  background: var(--bg-glass-heavy);
+  backdrop-filter: blur(10px);
+  border: 1px solid var(--border-subtle);
   display: flex; align-items: center; justify-content: center;
-  font-size: 18px;
+  font-size: 20px; color: var(--text-primary);
 }
 
+/* Inputs */
 input, select {
-  background: var(--bg-card);
-  border: 1px solid rgba(255,255,255,0.05);
-  color: white; padding: 14px 18px;
+  background: rgba(0,0,0,0.3);
+  border: 1px solid var(--border-subtle);
+  color: white; padding: 16px;
   border-radius: var(--radius-m); width: 100%;
-  font-size: 14px; outline: none;
+  font-size: 15px; outline: none;
+  transition: 0.3s;
 }
+input:focus, select:focus { border-color: var(--accent); background: rgba(0,0,0,0.5); }
 
-/* --- Header --- */
+/* --- HEADER --- */
 header {
   position: fixed; top: 0; left: 0; right: 0; z-index: 50;
-  padding: 16px 20px;
-  background: linear-gradient(180deg, var(--bg-app) 0%, rgba(15,15,17,0.9) 80%, transparent 100%);
+  padding: 16px 24px;
+  /* Gradient fade instead of solid color */
+  background: linear-gradient(180deg, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0) 100%);
   display: flex; align-items: center; justify-content: space-between;
+  backdrop-filter: blur(4px);
 }
 
-/* --- Pages --- */
+/* --- PAGES --- */
 .page {
   position: absolute; inset: 0;
-  padding: 80px 20px 100px 20px;
+  padding: 90px 24px 120px 24px; /* Added bottom padding for dock */
   overflow-y: auto;
-  opacity: 0; visibility: hidden; transform: scale(0.98);
-  transition: var(--anim);
+  opacity: 0; visibility: hidden; transform: scale(0.96);
+  transition: opacity 0.4s ease, transform 0.4s var(--anim-spring);
+  /* Hide scrollbar */
+  scrollbar-width: none; 
 }
+.page::-webkit-scrollbar { display: none; }
 .page.active { opacity: 1; visibility: visible; transform: scale(1); }
 
-/* --- Cards & Lists --- */
-.app-card {
-  background: var(--bg-panel); border-radius: var(--radius-l);
-  padding: 20px; margin-bottom: 20px;
-  border: 1px solid rgba(255,255,255,0.03);
-}
-.list-grid { display: grid; grid-template-columns: 1fr; gap: 16px; }
+/* --- LIST ITEMS --- */
+.list-grid { display: grid; grid-template-columns: 1fr; gap: 12px; }
+
 .item-card {
-  background: var(--bg-card); border-radius: var(--radius-m);
-  padding: 12px; display: flex; align-items: center; gap: 14px;
-  transition: var(--anim); cursor: pointer; border: 1px solid transparent;
+  background: var(--bg-card); 
+  border-radius: var(--radius-m);
+  padding: 16px; display: flex; align-items: center; gap: 16px;
+  transition: 0.2s; cursor: pointer; 
+  border: 1px solid transparent;
 }
-.item-card:hover { background: #323236; border-color: rgba(242, 153, 74, 0.3); }
+.item-card:active { transform: scale(0.98); background: rgba(255,255,255,0.05); }
+
 .item-img {
-  width: 60px; height: 60px; border-radius: 16px;
-  background: linear-gradient(135deg, #2a2a2d, #1f1f22);
-  padding: 8px;
+  width: 56px; height: 56px; border-radius: 18px;
+  background: linear-gradient(135deg, #3a3a3c, #1c1c1e);
+  border: 1px solid var(--border-subtle);
+  padding: 10px;
   display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.2);
 }
 
 .item-content { flex: 1; }
-.item-title { font-weight: 700; font-size: 16px; margin-bottom: 2px; }
-.item-sub { font-size: 12px; color: var(--text-muted); }
+.item-title { font-weight: 600; font-size: 16px; color: var(--text-primary); margin-bottom: 4px; }
+.item-sub { font-size: 13px; color: var(--text-secondary); }
+
 .item-action {
-  background: var(--accent-grad); color: black;
-  width: 36px; height: 36px; border-radius: 12px;
+  width: 32px; height: 32px; border-radius: 50%;
+  background: rgba(255,255,255,0.1);
   display: flex; align-items: center; justify-content: center;
-  font-weight: 700; font-size: 18px;
+  font-size: 14px; color: var(--text-secondary);
 }
 
-/* --- Map --- */
+/* --- STATS --- */
+.stats-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px; }
+.stat-box {
+  background: rgba(255,255,255,0.03); 
+  border-radius: var(--radius-m);
+  padding: 20px; display: flex; flex-direction: column; gap: 8px;
+  border: 1px solid var(--border-subtle);
+  text-align: center;
+}
+.stat-val { font-size: 32px; font-weight: 700; color: var(--text-primary); letter-spacing: -1px; }
+.stat-label { font-size: 11px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 1px; font-weight: 600; }
+
+/* --- MAP --- */
 #map-container {
   width: 100%; height: 100%;
-  border-radius: var(--radius-l); overflow: hidden; position: relative;
-  border: 1px solid rgba(255,255,255,0.05);
+  border-radius: var(--radius-xl); overflow: hidden; position: relative;
+  border: 1px solid var(--border-subtle);
+  box-shadow: 0 20px 50px rgba(0,0,0,0.5);
 }
-#map { width: 100%; height: 100%; background: #121212; }
+/* Map Filter for "Dark Mode" look */
+#map { width: 100%; height: 100%; background: #09090b; filter: contrast(1.1) saturate(0.8); }
 
-/* --- Custom Tooltip Style (CARD LAYOUT) --- */
+/* Cluster Customization */
+.marker-cluster-small, .marker-cluster-medium, .marker-cluster-large {
+    background-color: rgba(255, 159, 10, 0.2);
+}
+.marker-cluster div {
+    background-color: rgba(255, 159, 10, 0.9);
+    color: black;
+    font-weight: bold;
+    font-family: 'Inter', sans-serif;
+}
+
+/* --- TOOLTIP (Map Popups) --- */
 .custom-tooltip {
-    background: rgba(28, 28, 30, 0.85) !important;
-    backdrop-filter: blur(16px) !important;
-    -webkit-backdrop-filter: blur(16px) !important;
-    border: 1px solid rgba(255, 255, 255, 0.1) !important;
-    border-radius: 20px !important;
-    padding: 0 !important; /* We handle padding internally */
-    box-shadow: 0 12px 40px rgba(0,0,0,0.5) !important;
+    background: rgba(20, 20, 22, 0.95) !important;
+    backdrop-filter: blur(12px) !important;
+    border: 1px solid rgba(255, 255, 255, 0.15) !important;
+    border-radius: 18px !important;
+    padding: 0 !important;
+    box-shadow: 0 16px 40px rgba(0,0,0,0.6) !important;
     color: white !important;
     font-family: 'Inter', sans-serif !important;
-    min-width: 220px;
+    min-width: 240px;
     opacity: 1 !important;
-    z-index: 2000 !important;
 }
-/* Remove default arrow */
-.leaflet-tooltip-top:before, .leaflet-tooltip-bottom:before,
-.leaflet-tooltip-left:before, .leaflet-tooltip-right:before {
-    display: none !important;
-}
+.leaflet-tooltip-top:before { display: none !important; }
 
-/* Tooltip Internal Layout */
-.tt-card { display: flex; flex-direction: column; }
 .tt-header { 
-    padding: 14px 16px;
+    padding: 16px;
     display: flex; justify-content: space-between; align-items: center;
-    border-bottom: 1px solid rgba(255,255,255,0.08);
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+    background: rgba(255,255,255,0.02);
 }
-.tt-title { font-weight: 700; font-size: 14px; letter-spacing: -0.01em; }
+.tt-title { font-weight: 700; font-size: 15px; }
 .tt-badge { 
-    padding: 4px 10px; border-radius: 100px; 
+    padding: 4px 8px; border-radius: 6px; 
     font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;
 }
-.tt-badge.active { background: rgba(50, 209, 88, 0.15); color: #32d158; box-shadow: 0 0 10px rgba(50, 209, 88, 0.2); }
-.tt-badge.inactive { background: rgba(255, 69, 58, 0.15); color: #ff453a; }
-
-.tt-body { padding: 12px 16px; display: flex; flex-direction: column; gap: 8px; }
-.tt-row { display: flex; justify-content: space-between; align-items: center; font-size: 12px; }
-.tt-label { color: #9ca3af; font-weight: 500; }
-.tt-value { font-weight: 600; color: white; font-family: 'Monaco', monospace; }
-
+.tt-badge.active { background: rgba(48, 209, 88, 0.2); color: #30D158; box-shadow: 0 0 12px rgba(48, 209, 88, 0.2); }
+.tt-badge.inactive { background: rgba(255, 69, 58, 0.2); color: #FF453A; }
+.tt-body { padding: 16px; display: flex; flex-direction: column; gap: 10px; }
+.tt-row { display: flex; justify-content: space-between; align-items: center; font-size: 13px; }
+.tt-label { color: var(--text-secondary); }
+.tt-value { font-weight: 600; color: white; font-family: 'SF Mono', 'Monaco', monospace; letter-spacing: -0.5px; }
 .tt-footer {
-    background: rgba(0,0,0,0.2);
-    padding: 8px 16px;
-    font-size: 10px;
-    color: #666;
-    border-radius: 0 0 20px 20px;
-    display: flex; justify-content: space-between;
-    font-weight: 500;
+    background: rgba(0,0,0,0.3); padding: 10px 16px; font-size: 11px; color: #666;
+    border-radius: 0 0 18px 18px; display: flex; justify-content: space-between;
 }
 
-/* --- Stats Grid --- */
-.stats-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 20px; }
-.stat-box {
-  background: var(--bg-card); border-radius: var(--radius-m);
-  padding: 16px; display: flex; flex-direction: column; gap: 6px;
-}
-.stat-val { font-size: 28px; font-weight: 800; color: var(--text-main); }
-.stat-label { font-size: 12px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
-
-/* --- Bottom Nav --- */
+/* --- BOTTOM DOCK --- */
 .nav-dock {
-  position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
-  background: rgba(30, 30, 32, 0.8); backdrop-filter: blur(16px);
-  padding: 6px; border-radius: 100px;
-  display: flex; gap: 4px;
-  box-shadow: 0 20px 50px rgba(0,0,0,0.6); z-index: 100;
-  border: 1px solid rgba(255,255,255,0.08);
+  position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%);
+  background: rgba(30, 30, 35, 0.75); 
+  backdrop-filter: blur(25px) saturate(180%);
+  padding: 8px; border-radius: 100px;
+  display: flex; gap: 8px;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.5), inset 0 1px 1px rgba(255,255,255,0.1); 
+  z-index: 1000;
+  border: 1px solid rgba(255,255,255,0.1);
 }
 .nav-item {
-  padding: 10px 20px; border-radius: 100px;
-  color: #8e8e93; font-size: 20px;
+  padding: 12px 24px; border-radius: 100px;
+  color: #999; font-size: 20px;
   display: flex; align-items: center; justify-content: center;
-  transition: var(--anim);
+  transition: all 0.3s var(--anim-spring);
+  background: transparent;
+  position: relative;
 }
-.nav-item.active { background: var(--text-main); color: black; box-shadow: 0 4px 12px rgba(255,255,255,0.2); }
-.nav-item span { display: none; font-size: 12px; font-weight: 600; margin-left: 6px; }
+.nav-item:hover { color: white; }
+.nav-item.active { background: white; color: black; box-shadow: 0 4px 20px rgba(0,0,0,0.3); }
+.nav-item span { display: none; font-size: 13px; font-weight: 600; margin-left: 8px; letter-spacing: -0.02em; }
 .nav-item.active span { display: block; }
 
-/* --- NEW FINDER UI ("Flight Details" Style) --- */
+/* --- FINDER HUD (Flight Style) --- */
 #finder-overlay {
     position: fixed; inset: 0; z-index: 2000;
-    pointer-events: none; /* Let clicks pass to map when not on panel */
-    display: none;
-    flex-direction: column;
-    justify-content: flex-end;
+    pointer-events: none; display: none;
+    flex-direction: column; justify-content: flex-end;
 }
+#finder-overlay.active .finder-panel { transform: translateY(0); opacity: 1; }
 
-/* The Glass Panel */
 .finder-panel {
     pointer-events: auto;
-    position: relative;
-    margin: 0 16px 16px 16px;
-    height: 70vh;
-    background: var(--glass);
-    backdrop-filter: blur(24px);
-    -webkit-backdrop-filter: blur(24px);
+    position: relative; margin: 12px; height: 75vh;
+    background: rgba(15, 15, 20, 0.85);
+    backdrop-filter: blur(40px) saturate(200%);
     border-radius: 40px;
-    border: 1px solid var(--glass-border);
-    box-shadow: 0 20px 80px rgba(0,0,0,0.8);
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    padding: 30px 20px;
-    transform: translateY(100%);
-    transition: transform 0.5s cubic-bezier(0.19, 1, 0.22, 1);
+    border: 1px solid rgba(255,255,255,0.1);
+    box-shadow: 0 -20px 80px rgba(0,0,0,0.8);
+    display: flex; flex-direction: column; align-items: center;
+    padding: 40px 24px;
+    transform: translateY(110%);
+    transition: transform 0.5s var(--anim-spring), opacity 0.5s ease;
 }
 
-#finder-overlay.active .finder-panel {
-    transform: translateY(0);
-}
-
-/* Toggle Pills (Speed/Height style) */
+/* HUD Elements */
 .finder-toggles {
-    background: rgba(0,0,0,0.25);
-    border-radius: 20px;
-    padding: 4px;
-    display: flex;
-    gap: 4px;
-    margin-bottom: 30px;
+    background: rgba(0,0,0,0.3); border-radius: 100px; padding: 4px;
+    display: flex; gap: 2px; margin-bottom: 40px; border: 1px solid rgba(255,255,255,0.05);
 }
 .finder-toggle-btn {
-    padding: 10px 24px;
-    border-radius: 16px;
-    font-size: 14px;
-    font-weight: 500;
-    color: #888;
-    background: transparent;
+    padding: 8px 20px; border-radius: 100px; font-size: 13px;
+    color: #666; font-weight: 600; transition: 0.3s;
 }
-.finder-toggle-btn.active {
-    background: rgba(255,255,255,0.15);
-    color: white;
-    font-weight: 600;
-}
+.finder-toggle-btn.active { background: rgba(255,255,255,0.1); color: white; box-shadow: 0 2px 10px rgba(0,0,0,0.2); }
 
-/* Main Data Display */
-.finder-data-display {
-    text-align: center;
-    margin-bottom: auto;
-}
+.finder-data-display { text-align: center; margin-bottom: auto; position: relative; }
 .finder-value {
-    font-size: 80px;
-    font-weight: 300;
-    letter-spacing: -2px;
-    line-height: 1;
-    font-variant-numeric: tabular-nums;
+    font-size: 92px; font-weight: 700; letter-spacing: -4px; line-height: 1;
+    background: linear-gradient(to bottom, #fff, #888);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
 }
-.finder-unit {
-    font-size: 24px;
-    font-weight: 400;
-    color: #aaa;
-    margin-left: 4px;
-}
+.finder-unit { font-size: 20px; font-weight: 500; color: var(--accent); position: absolute; top: 10px; right: -30px; }
 
-/* Compass Visual */
 .finder-compass-wrapper {
-    width: 140px; height: 140px;
-    margin-bottom: 20px;
-    position: relative;
+    width: 200px; height: 200px; margin-bottom: 30px; position: relative;
     display: flex; align-items: center; justify-content: center;
+    background: radial-gradient(circle, rgba(255,255,255,0.02) 0%, transparent 70%);
 }
 .compass-bg {
-    position: absolute; inset: 0;
-    border-radius: 50%;
-    border: 1px solid rgba(255,255,255,0.1);
-    background: linear-gradient(180deg, rgba(255,255,255,0.05), rgba(0,0,0,0.2));
+    position: absolute; inset: 0; border-radius: 50%;
+    border: 1px dashed rgba(255,255,255,0.15);
 }
 .compass-arrow {
-    width: 40px; height: 100px;
-    background: linear-gradient(to bottom, #ff3b30 50%, #ccc 50%);
-    clip-path: polygon(50% 0, 100% 100%, 50% 85%, 0% 100%);
-    border-radius: 4px;
-    filter: drop-shadow(0 4px 10px rgba(0,0,0,0.5));
+    width: 6px; height: 110px;
+    background: var(--accent);
+    border-radius: 100px;
+    box-shadow: 0 0 20px var(--accent);
+    position: relative;
     transition: transform 0.1s linear;
 }
+.compass-arrow::after {
+    content: ''; position: absolute; top: -10px; left: -7px;
+    width: 0; height: 0; 
+    border-left: 10px solid transparent; border-right: 10px solid transparent;
+    border-bottom: 20px solid var(--accent);
+}
 
-/* Floating Close Button (White Circle) */
 .finder-close-btn {
-    width: 64px; height: 64px;
-    background: white;
-    border-radius: 50%;
-    color: black;
-    font-size: 24px;
-    display: flex; align-items: center; justify-content: center;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
-    position: absolute;
-    bottom: 40px;
-    left: 50%;
-    transform: translateX(-50%);
-    cursor: pointer;
-    transition: transform 0.2s;
+    width: 60px; height: 60px; background: white; border-radius: 50%;
+    color: black; font-size: 24px; display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 10px 40px rgba(255,255,255,0.2);
+    position: absolute; bottom: 40px; left: 50%; transform: translateX(-50%);
     z-index: 2002;
 }
-.finder-close-btn:active { transform: translateX(-50%) scale(0.9); }
 
-/* --- Modals --- */
+/* --- MODALS --- */
 .modal-backdrop {
   position: fixed; inset: 0; z-index: 3000;
-  background: rgba(0,0,0,0.6); backdrop-filter: blur(6px);
+  background: rgba(0,0,0,0.8); backdrop-filter: blur(8px);
   display: none; align-items: center; justify-content: center;
 }
 .modal-content {
-  background: var(--bg-panel); width: 90%; max-width: 400px;
-  border-radius: var(--radius-l); padding: 24px;
-  box-shadow: 0 20px 60px rgba(0,0,0,0.8);
-  border: 1px solid rgba(255,255,255,0.05);
+  background: #1c1c1e; width: 90%; max-width: 380px;
+  border-radius: var(--radius-l); padding: 32px;
+  box-shadow: 0 40px 80px rgba(0,0,0,1);
+  border: 1px solid var(--border-subtle);
 }
 
-/* Leaflet Tweaks */
-.leaflet-container { background: #121212 !important; }
-.leaflet-popup-content-wrapper { background: var(--bg-panel); color: white; border-radius: 12px; }
-.leaflet-popup-tip { background: var(--bg-panel); }
+/* --- TOAST --- */
+#toast {
+    background: rgba(255,255,255,0.1); 
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255,255,255,0.1);
+    color: white; 
+    font-family: 'Inter', sans-serif;
+    font-size: 14px; letter-spacing: 0.5px;
+}
 </style>
 </head>
 <body>
 
-<!-- Header -->
 <header>
-  <div style="display:flex;align-items:center;gap:10px;">
-    <div style="width:32px;height:32px;background:var(--accent-grad);border-radius:8px;display:flex;align-items:center;justify-content:center;font-weight:bold;color:black;">T</div>
-    <h1 style="font-size:18px;">Trolley<span style="color:var(--accent)">Map</span></h1>
+  <div style="display:flex;align-items:center;gap:12px;">
+    <div style="width:36px;height:36px;background:var(--accent-grad);border-radius:12px;display:flex;align-items:center;justify-content:center;box-shadow:0 0 15px var(--accent-glow);">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"></circle>
+            <circle cx="12" cy="12" r="3"></circle>
+        </svg>
+    </div>
+    <h1 style="font-size:20px;">Trolley<span style="color:var(--accent)">Tracker</span></h1>
   </div>
-  <div style="display:flex;gap:8px;">
-    <button id="hdr-add" class="btn-ghost" style="padding:8px 12px;">+ Add</button>
+  <div>
+    <button id="hdr-add" class="btn-ghost" style="padding:8px 16px; font-size:22px;">+</button>
   </div>
 </header>
 
-<!-- TROLLEY ICON TEMPLATE (Red Handle) -->
 <template id="tpl-icon">
     <svg class="trolley-icon-svg" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <path d="M19 5H21" stroke="#FF453A" stroke-width="2.5" stroke-linecap="round"/>
-        <path d="M16 5H19L18.5 7" stroke="#FF453A" stroke-width="2.5" stroke-linecap="round"/>
-        <path d="M4 6h14l-1.5 9h-11L4 6z" stroke="#E0E0E0" stroke-width="1.5"/>
-        <path d="M5.5 9h11" stroke="#E0E0E0" stroke-width="1" stroke-opacity="0.5"/>
-        <path d="M5 12h10" stroke="#E0E0E0" stroke-width="1" stroke-opacity="0.5"/>
-        <path d="M8 6v9" stroke="#E0E0E0" stroke-width="1" stroke-opacity="0.5"/>
-        <path d="M11 6v9" stroke="#E0E0E0" stroke-width="1" stroke-opacity="0.5"/>
-        <path d="M14 6v9" stroke="#E0E0E0" stroke-width="1" stroke-opacity="0.5"/>
-        <path d="M1 2h3l3.5 16h11" stroke="#E0E0E0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-        <circle cx="8" cy="20" r="1.5" fill="#888"/>
-        <circle cx="17" cy="20" r="1.5" fill="#888"/>
+        <path d="M7 6H17" stroke="#FF9F0A" stroke-width="2" stroke-linecap="round"/>
+        <path d="M12 6V16" stroke="#333" stroke-width="1.5"/>
+        <rect x="5" y="8" width="14" height="10" rx="2" fill="#2C2C2E" stroke="#555" stroke-width="1.5"/>
+        <path d="M7 12H17" stroke="#555" stroke-width="1"/>
+        <circle cx="8" cy="20" r="2" fill="#888"/>
+        <circle cx="16" cy="20" r="2" fill="#888"/>
     </svg>
 </template>
 
-<!-- 1. HOME PAGE -->
 <div id="page-home" class="page active">
+  <div style="height:20px;"></div>
+
   <div class="app-card">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
-      <h3>Overview</h3>
-      <span class="pill" style="color:var(--accent)">Live Updates</span>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+      <h3>Fleet Status</h3>
+      <span class="pill">Live</span>
     </div>
     
     <div class="stats-row">
       <div class="stat-box">
-        <span class="stat-label">Active Trolleys</span>
         <span class="stat-val" id="statBeaconCount">0</span>
+        <span class="stat-label">Trolleys</span>
       </div>
       <div class="stat-box">
-        <span class="stat-label">Active Zones</span>
         <span class="stat-val" id="statZoneCount">0</span>
+        <span class="stat-label">Zones</span>
       </div>
     </div>
 
@@ -440,155 +450,163 @@ header {
         <select id="zoneFilter">
             <option value="">All Zones</option>
         </select>
-        <div style="position:absolute;right:14px;top:14px;pointer-events:none;font-size:10px;">▼</div>
+        <div style="position:absolute;right:16px;top:50%;transform:translateY(-50%);pointer-events:none;color:var(--text-secondary);font-size:12px;">▼</div>
     </div>
   </div>
 
-  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;padding:0 4px;">
-    <h3 style="font-size:18px;">Recent Trolleys</h3>
-    <span class="small muted" id="listCount">0 items</span>
+  <div style="display:flex;justify-content:space-between;align-items:end;margin-bottom:16px;padding:0 8px;">
+    <h3 style="font-size:20px;">Nearby</h3>
+    <span class="small muted" id="listCount">Scanning...</span>
   </div>
 
   <div id="homeList" class="list-grid"></div>
-  <div id="homeEmpty" class="muted small" style="text-align:center;padding:20px;">No trolleys found.</div>
+  
+  <div id="homeEmpty" class="muted small" style="text-align:center;padding:40px; border:1px dashed var(--border-subtle); border-radius:20px; margin-top:20px;">
+    No active trolleys detected nearby.
+  </div>
 </div>
 
-<!-- 2. MAP PAGE -->
 <div id="page-map" class="page" style="padding:0;">
   <div id="map-container">
     <div id="map"></div>
     
-    <div style="position:absolute;top:80px;left:20px;right:20px;z-index:500;display:flex;gap:8px;">
-      <input id="mapSearch" placeholder="Search ID or Zone..." style="background:rgba(28,28,30,0.9);backdrop-filter:blur(10px);box-shadow:0 8px 20px rgba(0,0,0,0.3);">
-      <button id="mapRecenter" class="btn-icon" style="background:rgba(28,28,30,0.9);color:var(--accent);flex-shrink:0;">⌖</button>
+    <div style="position:absolute;top:90px;left:20px;right:20px;z-index:500;display:flex;gap:10px;">
+      <div style="position:relative;flex:1;">
+        <input id="mapSearch" placeholder="Search fleet ID..." style="background:rgba(20,20,22,0.85);backdrop-filter:blur(12px);padding-left:44px;box-shadow:0 10px 30px rgba(0,0,0,0.4);height:50px;">
+        <span style="position:absolute;left:16px;top:50%;transform:translateY(-50%);font-size:16px;opacity:0.5;">🔍</span>
+      </div>
+      <button id="mapRecenter" class="btn-icon" style="width:50px;height:50px;flex-shrink:0;color:var(--accent);">⌖</button>
     </div>
 
-    <!-- Selected Beacon Card (Bottom Sheet) -->
-    <div id="mapCard" class="app-card" style="position:absolute;bottom:100px;left:20px;right:20px;z-index:500;margin:0;transform:translateY(150%);transition:transform 0.4s ease;background:rgba(28,28,30,0.95); max-height: 60%; overflow-y:auto;">
-        <div style="display:flex;gap:14px;">
-            <div class="item-img" id="cardIconContainer" style="width:50px;height:50px;">
-                <!-- Icon injected here -->
-            </div>
+    <div id="mapCard" class="app-card" style="position:absolute;bottom:110px;left:16px;right:16px;z-index:500;margin:0;transform:translateY(150%);transition:transform 0.5s var(--anim-spring);background:rgba(28,28,30,0.9); max-height: 60%; overflow-y:auto;">
+        <div style="display:flex;gap:16px;align-items:center;">
+            <div class="item-img" id="cardIconContainer" style="width:64px;height:64px;background:black;border:1px solid var(--border-subtle);">
+                </div>
             <div style="flex:1;">
-                <div id="mc_name" style="font-weight:700;font-size:16px;">Trolley Name</div>
-                <div id="mc_zone" class="small muted">Zone Info</div>
+                <div id="mc_name" style="font-weight:700;font-size:20px;letter-spacing:-0.5px;">Trolley Name</div>
+                <div id="mc_zone" class="small muted" style="font-size:14px;">Zone Info</div>
             </div>
-            <button id="mc_close" class="btn-ghost" style="width:30px;height:30px;padding:0;display:flex;align-items:center;justify-content:center;">✕</button>
+            <button id="mc_close" class="btn-ghost" style="width:36px;height:36px;padding:0;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,0.1);">✕</button>
         </div>
-        <hr style="border:0;border-top:1px solid rgba(255,255,255,0.1);margin:12px 0;">
-        <div style="display:flex;gap:10px;">
-            <button id="mc_find" class="btn-primary" style="flex:1;">Track</button>
-            <button id="mc_del" class="btn-ghost" style="color:var(--danger);">Del</button>
+        
+        <div style="margin-top:24px; display:grid; grid-template-columns: 2fr 1fr; gap:12px;">
+            <button id="mc_find" class="btn-primary">Start Tracking</button>
+            <button id="mc_del" class="btn-ghost" style="color:var(--danger);background:rgba(255,69,58,0.1);">Delete</button>
         </div>
     </div>
   </div>
 </div>
 
-<!-- 3. SETTINGS PAGE -->
 <div id="page-settings" class="page">
+    <div style="height:20px;"></div>
     <div class="app-card">
-        <h3>Management</h3>
-        <p class="muted small" style="margin-bottom:20px;">Manage your fleet configuration.</p>
+        <h3>Configuration</h3>
+        <p class="muted small" style="margin-bottom:24px;margin-top:4px;">Manage system parameters and zones.</p>
         
-        <button id="btnAddZone" class="item-card" style="width:100%;margin-bottom:10px;">
-            <div class="item-img" style="background:#333;">🔵</div>
-            <div class="item-content">
-                <div class="item-title">Add New Zone</div>
-                <div class="item-sub">Create geofenced areas</div>
-            </div>
-            <div style="opacity:0.5;">→</div>
-        </button>
+        <div class="list-grid">
+            <button id="btnAddZone" class="item-card" style="width:100%;">
+                <div class="item-img" style="background:rgba(10, 132, 255, 0.15); color:#0A84FF;">⬚</div>
+                <div class="item-content" style="text-align:left;">
+                    <div class="item-title">Geofence Zones</div>
+                    <div class="item-sub">Configure boundaries</div>
+                </div>
+                <div style="opacity:0.3;">→</div>
+            </button>
 
-        <button id="btnRefresh" class="item-card" style="width:100%;">
-            <div class="item-img" style="background:#333;">↻</div>
-            <div class="item-content">
-                <div class="item-title">Sync Data</div>
-                <div class="item-sub" id="lastSyncText">Last sync: Never</div>
-            </div>
-        </button>
+            <button id="btnRefresh" class="item-card" style="width:100%;">
+                <div class="item-img" style="background:rgba(255,255,255,0.1);">↻</div>
+                <div class="item-content" style="text-align:left;">
+                    <div class="item-title">System Sync</div>
+                    <div class="item-sub" id="lastSyncText">Last sync: Never</div>
+                </div>
+            </button>
+        </div>
+    </div>
+    
+    <div style="text-align:center; opacity:0.3; font-size:11px; margin-top:40px;">
+        Version 2.0.4 (Premium)<br>Trolley Systems Ltd.
     </div>
 </div>
 
-<!-- Navigation Dock -->
 <nav class="nav-dock">
-  <button class="nav-item active" data-page="home">🏠<span>Home</span></button>
-  <button class="nav-item" data-page="map">🗺️<span>Map</span></button>
-  <button class="nav-item" data-page="settings">⚙️<span>Settings</span></button>
+  <button class="nav-item active" data-page="home">
+    <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg>
+    <span>Home</span>
+  </button>
+  <button class="nav-item" data-page="map">
+    <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 2a15 15 0 0010 10M2 12a15 15 0 0010 10"/></svg>
+    <span>Map</span>
+  </button>
+  <button class="nav-item" data-page="settings">
+    <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+    <span>Config</span>
+  </button>
 </nav>
 
-<!-- MODALS -->
 <div id="modalAdd" class="modal-backdrop">
     <div class="modal-content">
-        <h3 style="margin-bottom:16px;">New Beacon</h3>
-        <label class="small muted">Zone ID</label>
-        <input id="inpZone" placeholder="e.g. ARRIVAL-A" style="margin-bottom:12px;">
-        <label class="small muted">Trolley ID</label>
+        <h2 style="margin-bottom:8px;">New Beacon</h2>
+        <p class="muted small" style="margin-bottom:24px;">Enter the identification details.</p>
+        
+        <label class="small muted" style="margin-bottom:4px;display:block;">ZONE ID</label>
+        <input id="inpZone" placeholder="e.g. ARRIVAL-A" style="margin-bottom:16px;">
+        
+        <label class="small muted" style="margin-bottom:4px;display:block;">HARDWARE ID</label>
         <input id="inpId" placeholder="e.g. T-001">
-        <div style="display:flex;gap:10px;margin-top:20px;justify-content:flex-end;">
-            <button class="btn-ghost" onclick="closeModals()">Cancel</button>
-            <button class="btn-primary" id="btnAddConfirm">Place on Map</button>
+        
+        <div style="display:flex;gap:12px;margin-top:32px;">
+            <button class="btn-ghost" onclick="closeModals()" style="flex:1;">Cancel</button>
+            <button class="btn-primary" id="btnAddConfirm" style="flex:1;">Place</button>
         </div>
     </div>
 </div>
 
 <div id="modalZone" class="modal-backdrop">
     <div class="modal-content">
-        <h3 style="margin-bottom:16px;">New Zone</h3>
-        <label class="small muted">Zone Name</label>
+        <h2 style="margin-bottom:8px;">New Zone</h2>
+        <p class="muted small" style="margin-bottom:24px;">Define a new geofenced area.</p>
+        
+        <label class="small muted" style="margin-bottom:4px;display:block;">ZONE NAME</label>
         <input id="inpZoneName" placeholder="e.g. PARKING-B1">
-        <div style="display:flex;gap:10px;margin-top:20px;justify-content:flex-end;">
-            <button class="btn-ghost" onclick="closeModals()">Cancel</button>
-            <button class="btn-primary" id="btnAddZoneConfirm">Set Center</button>
+        
+        <div style="display:flex;gap:12px;margin-top:32px;">
+            <button class="btn-ghost" onclick="closeModals()" style="flex:1;">Cancel</button>
+            <button class="btn-primary" id="btnAddZoneConfirm" style="flex:1;">Set Center</button>
         </div>
     </div>
 </div>
 
-<!-- NEW FINDER OVERLAY -->
 <div id="finder-overlay">
     <div class="finder-panel">
-        <div style="margin-bottom:20px;font-size:18px;font-weight:600;color:white;opacity:0.9;" id="findTargetName">Trolley Details</div>
+        <div style="margin-bottom:30px;font-size:24px;font-weight:700;color:white;letter-spacing:-0.5px;" id="findTargetName">Trolley Details</div>
 
-        <!-- Toggles -->
         <div class="finder-toggles">
-            <div class="finder-toggle-btn active">Distance</div>
-            <div class="finder-toggle-btn">Compass</div>
+            <div class="finder-toggle-btn active">PROXIMITY</div>
+            <div class="finder-toggle-btn">VISUAL</div>
         </div>
 
-        <!-- Data -->
         <div class="finder-data-display">
             <span class="finder-value" id="findDistVal">--</span>
             <span class="finder-unit">m</span>
         </div>
 
-        <!-- Compass Visual -->
         <div class="finder-compass-wrapper">
             <div class="compass-bg"></div>
             <div class="compass-arrow" id="finderArrow"></div>
         </div>
 
-        <!-- NEW: Specific BLE Scan Button inside "Track" overlay -->
-        <button id="btnFinderBle" class="btn-blue" style="margin-bottom: 20px;">
-            📡 Scan for Signal
+        <button id="btnFinderBle" class="btn-blue" style="width:100%; margin-bottom: 30px; background: rgba(10, 132, 255, 0.2); border:1px solid #0A84FF;">
+            📡 SEARCH SIGNAL
         </button>
-
-        <!-- Ticks visual (now smaller to fit) -->
-        <div style="display:flex;gap:10px;opacity:0.3;margin-top:auto;margin-bottom:40px;">
-            <div style="width:2px;height:10px;background:white;"></div>
-            <div style="width:2px;height:15px;background:white;"></div>
-            <div style="width:2px;height:25px;background:white;"></div>
-            <div style="width:2px;height:15px;background:white;"></div>
-            <div style="width:2px;height:10px;background:white;"></div>
-        </div>
 
         <button class="finder-close-btn" id="btnStopFind">✕</button>
     </div>
 </div>
 
-<!-- Toast -->
-<div id="toast" style="position:fixed;top:20px;left:50%;transform:translate(-50%, -100px);background:white;color:black;padding:10px 20px;border-radius:50px;font-weight:600;box-shadow:0 10px 30px rgba(0,0,0,0.5);transition:0.4s;z-index:3000;">Notification</div>
+<div id="toast" style="position:fixed;top:20px;left:50%;transform:translate(-50%, -100px);padding:12px 24px;border-radius:50px;font-weight:600;box-shadow:0 20px 40px rgba(0,0,0,0.5);transition:0.5s var(--anim-spring);z-index:3000;">Notification</div>
 
 <script>
-// --- Logic ---
+// --- LOGIC (UNCHANGED) ---
 const FIXED_ZONE_RADIUS = 50;
 
 let map = null;
@@ -601,17 +619,14 @@ let selectedBeacon = null;
 let placementMode = null;
 let tempPayload = null;
 let watchId = null;
-
-// User Location
 let userMarker = null;
 let userLat = null;
 let userLng = null;
 
-// Get Trolley SVG String
 const getTrolleyIcon = () => document.getElementById('tpl-icon').innerHTML;
 
 function init(){
-    // Map
+    // Map init with dark tweaks
     map = L.map('map', { zoomControl: false }).setView([1.3455, 103.9323], 17);
     L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
         attribution: '&copy; OSM &copy; CartoDB', subdomains: 'abcd', maxZoom: 20
@@ -619,10 +634,8 @@ function init(){
     clusters = L.markerClusterGroup({ showCoverageOnHover: false, disableClusteringAtZoom: 19 });
     map.addLayer(clusters);
 
-    // Inject Icon into Map Card
     document.getElementById('cardIconContainer').innerHTML = getTrolleyIcon();
 
-    // Firebase
     try {
         const firebaseConfig = {
             apiKey: "AIzaSyCYE1hpoQV_QlfhQz7hlZResGuunbY1DG0",
@@ -646,7 +659,7 @@ function init(){
                     zone: v.zoneId || "",
                     lat: v.latitude || v.lat,
                     lng: v.longitude || v.lng,
-                    raw: v // STORE RAW FIREBASE DATA HERE
+                    raw: v 
                 };
             });
             updateUI();
@@ -662,21 +675,14 @@ function init(){
         });
     } catch(e) { console.error(e); showToast("Firebase Error"); }
 
-    // START GEO TRACKING FOR "MY LOCATION"
     if(navigator.geolocation) {
         navigator.geolocation.watchPosition(
             (pos) => {
                 userLat = pos.coords.latitude;
                 userLng = pos.coords.longitude;
-                
                 if(!userMarker) {
-                    // Create User Blue Dot Marker
                     userMarker = L.circleMarker([userLat, userLng], {
-                        radius: 8,
-                        color: '#FFF',
-                        fillColor: '#007AFF',
-                        fillOpacity: 1,
-                        weight: 2
+                        radius: 8, color: '#FFF', fillColor: '#007AFF', fillOpacity: 1, weight: 2
                     }).addTo(map);
                     userMarker.bindPopup("You are here");
                 } else {
@@ -687,7 +693,6 @@ function init(){
             { enableHighAccuracy: true }
         );
     }
-
     setupInteractions();
 }
 
@@ -704,7 +709,7 @@ function renderList(){
     const filter = document.getElementById("zoneFilter").value;
     const filtered = beacons.filter(b => !filter || b.zone === filter);
     
-    document.getElementById("listCount").innerText = `${filtered.length} items`;
+    document.getElementById("listCount").innerText = `${filtered.length} ACTIVE`;
     document.getElementById("homeEmpty").style.display = filtered.length ? 'none' : 'block';
     
     listEl.innerHTML = filtered.map(b => `
@@ -733,15 +738,12 @@ function renderMap(){
 
     beacons.forEach(b => {
         if(zoneFilter && b.zone !== zoneFilter) return;
-
         if(selectedBeacon && b.id !== selectedBeacon.id) return;
-
         if(!b.lat || !b.lng) return;
         const m = L.circleMarker([b.lat, b.lng], {
-            radius: 8, color: '#FF453A', fillColor: '#FF453A', fillOpacity: 0.9, weight: 2
+            radius: 9, color: '#FF9F0A', fillColor: '#FFD60A', fillOpacity: 1, weight: 3
         });
         
-        // --- TOOLTIP CARD ---
         const lastSeen = b.raw.timestamp ? new Date(b.raw.timestamp) : new Date();
         const timeStr = lastSeen.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
         const isRecent = (Date.now() - lastSeen.getTime()) < 1000 * 60 * 60; 
@@ -758,19 +760,19 @@ function renderMap(){
                         <span class="tt-value">${b.zone || 'Unknown'}</span>
                     </div>
                     <div class="tt-row">
-                        <span class="tt-label">Signal Strength</span>
-                        <span class="tt-value">${b.raw.rssi ? b.raw.rssi + ' dBm' : 'N/A'}</span>
+                        <span class="tt-label">Signal</span>
+                        <span class="tt-value">${b.raw.rssi ? b.raw.rssi + ' dBm' : '--'}</span>
                     </div>
                     <div class="tt-row">
-                        <span class="tt-label">Battery Level</span>
+                        <span class="tt-label">Battery</span>
                         <span class="tt-value" style="color:${b.raw.battery > 20 ? '#32d158' : '#ff453a'}">
-                            ${b.raw.battery ? b.raw.battery + '%' : 'N/A'}
+                            ${b.raw.battery ? b.raw.battery + '%' : '--'}
                         </span>
                     </div>
                 </div>
                 <div class="tt-footer">
-                    <span>🕒 ${timeStr}</span>
-                    <span style="opacity:0.6">${b.lat.toFixed(4)}, ${b.lng.toFixed(4)}</span>
+                    <span>Update: ${timeStr}</span>
+                    <span style="opacity:0.6;font-family:monospace">${b.lat.toFixed(4)}, ${b.lng.toFixed(4)}</span>
                 </div>
             </div>
         `;
@@ -779,7 +781,7 @@ function renderMap(){
             direction: 'top',
             className: 'custom-tooltip',
             opacity: 1,
-            offset: [0, -12]
+            offset: [0, -15]
         });
         
         m.on('click', (e) => {
@@ -800,67 +802,47 @@ function renderMap(){
         Object.keys(zones).forEach(zKey => {
             if(zoneFilter && zoneFilter !== zKey) return;
             zoneCircles[zKey] = L.circle(zones[zKey], {
-                radius: FIXED_ZONE_RADIUS, color: '#30d158', fillColor: '#30d158', fillOpacity: 0.1, weight: 1, dashArray: '5, 5'
+                radius: FIXED_ZONE_RADIUS, color: '#30d158', fillColor: '#30d158', fillOpacity: 0.05, weight: 1, dashArray: '4, 8'
             }).addTo(map);
         });
     }
 }
 
-// --- TARGETED BLE SCANNER LOGIC ---
 async function scanTargetBeacon() {
     if (!selectedBeacon) return;
-
-    if (!window.isSecureContext) {
-        alert("Web Bluetooth requires HTTPS or localhost.");
-        return;
-    }
-    if (!navigator.bluetooth) {
-        alert("Browser not supported. Use Chrome (Android/Desktop) or Bluefy (iOS).");
-        return;
-    }
+    if (!window.isSecureContext) { alert("HTTPS required."); return; }
+    if (!navigator.bluetooth) { alert("Bluetooth not supported."); return; }
 
     try {
-        const targetName = selectedBeacon.id; // We filter for the exact ID
+        const targetName = selectedBeacon.id; 
         showToast(`Scanning for ${targetName}...`);
         
-        // Filter specifically for this trolley's ID
         const device = await navigator.bluetooth.requestDevice({
             filters: [{ name: targetName }]
-            // Note: If the device advertises a name different from its ID, this filter will fail.
-            // In that case, switch to { acceptAllDevices: true } and check name manually.
         });
 
         showToast(`Connected to ${device.name}!`);
         
-        if(!userLat || !userLng) {
-            alert("Waiting for GPS signal to update location...");
-            return;
-        }
+        if(!userLat || !userLng) { alert("Waiting for GPS..."); return; }
 
-        // Update Firebase with CURRENT user location (Phone is now the scanner)
         const updates = {
             latitude: userLat,
             longitude: userLng,
             timestamp: new Date().toISOString(),
             lastSeenBy: "Manual-Track-Scan",
-            rssi: -40 // Mock RSSI as "Near" since we just connected
+            rssi: -40 
         };
         
         await firebase.database().ref(`/Tracking/${selectedBeacon.id}`).update(updates);
-        
-        showToast("Location Updated Successfully!");
-        // Refresh Compass Target
+        showToast("Location Updated!");
         selectedBeacon.lat = userLat;
         selectedBeacon.lng = userLng;
         renderMap();
 
     } catch (error) {
         console.log('BLE Error: ' + error);
-        if(error.name === 'NotFoundError') {
-            showToast("Device not found nearby.");
-        } else {
-            alert("Scan Error: " + error.message);
-        }
+        if(error.name === 'NotFoundError') showToast("Device not found.");
+        else alert("Scan Error: " + error.message);
     }
 }
 
@@ -876,10 +858,7 @@ function setupInteractions(){
     });
 
     document.getElementById('hdr-add').onclick = () => document.getElementById('modalAdd').style.display = 'flex';
-    
-    // Bind New BLE Button inside overlay
     document.getElementById('btnFinderBle').onclick = scanTargetBeacon;
-
     document.getElementById('btnAddZone').onclick = () => document.getElementById('modalZone').style.display = 'flex';
     
     document.getElementById('btnAddConfirm').onclick = () => {
@@ -918,10 +897,7 @@ function setupInteractions(){
             placementMode = null;
             return;
         }
-
-        if(selectedBeacon) {
-            deselectBeacon();
-        }
+        if(selectedBeacon) deselectBeacon();
     });
 
     document.getElementById('mapSearch').oninput = (e) => {
@@ -931,7 +907,6 @@ function setupInteractions(){
     };
     
     document.getElementById('mc_close').onclick = deselectBeacon;
-
     document.getElementById('mc_del').onclick = () => {
         if(confirm("Delete this beacon?")){
             firebase.database().ref(`/Tracking/${selectedBeacon.id}`).remove();
@@ -967,10 +942,8 @@ function viewOnMap(id){
 function selectBeacon(b){
     selectedBeacon = b;
     map.flyTo([b.lat, b.lng], 18);
-    
     document.getElementById('mc_name').innerText = b.id;
     document.getElementById('mc_zone').innerText = b.zone || "No Zone";
-    
     document.getElementById('mapCard').style.transform = 'translateY(0)';
     renderMap();
 }
@@ -985,24 +958,17 @@ function closeModals(){ document.querySelectorAll('.modal-backdrop').forEach(m =
 function showToast(msg){
     const t = document.getElementById('toast');
     t.innerText = msg;
-    t.style.transform = 'translate(-50%, 20px)';
+    t.style.transform = 'translate(-50%, 80px)';
     setTimeout(() => t.style.transform = 'translate(-50%, -100px)', 3000);
 }
 
-// --- COMPASS LOGIC ---
 function startCompass(){
     if(!selectedBeacon) return;
-    
     document.getElementById('mapCard').style.transform = 'translateY(150%)';
     const overlay = document.getElementById('finder-overlay');
     overlay.style.display = 'flex';
-    
-    requestAnimationFrame(() => {
-        overlay.classList.add('active');
-    });
-
+    requestAnimationFrame(() => overlay.classList.add('active'));
     document.getElementById('findTargetName').innerText = "Tracking: " + selectedBeacon.id;
-
     if(navigator.geolocation){
         watchId = navigator.geolocation.watchPosition(processPosition, console.error, {enableHighAccuracy:true});
         window.addEventListener('deviceorientation', processOrientation, true);
@@ -1012,13 +978,8 @@ function startCompass(){
 document.getElementById('btnStopFind').onclick = () => {
     const overlay = document.getElementById('finder-overlay');
     overlay.classList.remove('active');
-    
-    setTimeout(() => {
-        overlay.style.display = 'none';
-    }, 500); 
-
+    setTimeout(() => overlay.style.display = 'none', 500); 
     if(selectedBeacon) document.getElementById('mapCard').style.transform = 'translateY(0)';
-
     if(watchId) navigator.geolocation.clearWatch(watchId);
     window.removeEventListener('deviceorientation', processOrientation);
 };
@@ -1030,25 +991,19 @@ function processOrientation(e){
 }
 function processPosition(pos){
     const { latitude, longitude } = pos.coords;
-    userLat = latitude; 
-    userLng = longitude;
-
+    userLat = latitude; userLng = longitude;
     const destLat = selectedBeacon.lat;
     const destLng = selectedBeacon.lng;
-    
     const R = 6371e3;
     const φ1 = latitude * Math.PI/180, φ2 = destLat * Math.PI/180;
     const Δφ = (destLat-latitude) * Math.PI/180, Δλ = (destLng-longitude) * Math.PI/180;
     const a = Math.sin(Δφ/2)**2 + Math.cos(φ1)*Math.cos(φ2) * Math.sin(Δλ/2)**2;
     const d = R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-    
     document.getElementById('findDistVal').innerText = Math.round(d);
-
     const y = Math.sin(Δλ) * Math.cos(φ2);
     const x = Math.cos(φ1)*Math.sin(φ2) - Math.sin(φ1)*Math.cos(φ2)*Math.cos(Δλ);
     const brng = (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
     const rotation = brng - currentHeading;
-    
     document.getElementById('finderArrow').style.transform = `rotate(${rotation}deg)`;
 }
 
