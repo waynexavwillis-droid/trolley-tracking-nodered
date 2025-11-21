@@ -74,7 +74,7 @@ h1, h2, h3 { margin: 0; font-weight: 600; }
   border: 1px solid var(--border);
 }
 
-/* Buttons */
+/* Base Buttons */
 button { border: none; cursor: pointer; font-family: inherit; transition: transform 0.1s; outline: none; }
 button:active { transform: scale(0.96); }
 
@@ -104,6 +104,38 @@ button:active { transform: scale(0.96); }
   color: var(--accent);
   display: flex; align-items: center; justify-content: center;
   font-size: 18px;
+}
+
+/* --- SPECIAL: Add Beacon Header Button (Universe Style, Yellow Hover) --- */
+/* From Uiverse.io by cssbuttons-io – adapted for header add button */
+.btn-add-header {
+  padding: 0.8em 1.8em;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 2.5px;
+  font-weight: 500;
+  color: #000;
+  background-color: #fff;
+  border: none;
+  border-radius: 45px;
+  box-shadow: 0px 8px 15px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease 0s;
+  cursor: pointer;
+  outline: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-add-header:hover {
+  background-color: #ffd60a; /* yellow hover */
+  box-shadow: 0px 15px 20px rgba(255, 214, 10, 0.4);
+  color: #000;
+  transform: translateY(-7px);
+}
+
+.btn-add-header:active {
+  transform: translateY(-1px);
 }
 
 /* Inputs */
@@ -423,7 +455,8 @@ header {
     </div>
     <h1 style="font-size:18px;">Trolley<span style="color:var(--accent)">Tracker</span></h1>
   </div>
-  <button id="hdr-add" class="btn-ghost" style="font-size:24px;padding:0 8px;">+</button>
+  <!-- Updated: Add Beacon button with Universe-style design -->
+  <button id="hdr-add" class="btn-add-header">+ Beacon</button>
 </header>
 
 <!-- TROLLEY ICON TEMPLATE (Synced to Accent) -->
@@ -604,7 +637,7 @@ const getTrolleyIcon = () => document.getElementById('tpl-icon').innerHTML;
 function generateTicks() {
     const container = document.getElementById('wfTicks');
     let html = '';
-    for(let i=0; i<360; i+=30) {
+       for(let i=0; i<360; i+=30) {
         html += `<div style="position:absolute;top:0;left:50%;width:2px;height:10px;background:#333;transform-origin:center 140px;transform:rotate(${i}deg);"></div>`;
     }
     container.innerHTML = html;
@@ -660,7 +693,6 @@ function init(){
     } catch(e) { console.error(e); }
 
     if(navigator.geolocation) {
-        // CORRECTED: Ensure watchPosition has three arguments if options are provided.
         navigator.geolocation.watchPosition(pos => {
             userLat = pos.coords.latitude; userLng = pos.coords.longitude;
             if(!userMarker) {
@@ -701,7 +733,7 @@ function renderList(){
     sortedZones.forEach(zoneKey => {
         const beaconsInZone = zonesMap[zoneKey];
         
-        // 2. Zone group WITHOUT title (just the grid)
+        // Zone group without title (only grid)
         listHtml += `<div class="zone-group">
             <div class="beacon-card-grid">`;
             
@@ -743,7 +775,7 @@ function renderList(){
     
     listEl.innerHTML = listHtml;
 
-    // Update filter dropdown (same logic)
+    // Update filter dropdown
     const sel = document.getElementById("zoneFilter");
     const knownZones = [...new Set([...beacons.map(b=>b.zone), ...Object.keys(zones)])].filter(Boolean).sort();
     const curr = sel.value;
@@ -761,7 +793,6 @@ function renderMap(){
         if(selectedBeacon && b.id !== selectedBeacon.id) return;
         if(!b.lat || !b.lng) return;
         
-        // Updated to Blue (#0A84FF)
         const m = L.circleMarker([b.lat, b.lng], {
             radius: 8, color: '#0A84FF', fillColor: '#0A84FF', fillOpacity: 0.8, weight: 2
         });
@@ -873,8 +904,7 @@ function setupInteractions(){
     
     document.getElementById('mc_close').onclick = deselectBeacon;
     document.getElementById('mc_del').onclick = () => {
-        // IMPORTANT: Use a custom modal/UI instead of confirm()
-        if(window.confirm("Delete beacon?")){ // Reverted to confirm() for simplicity, but noting the best practice.
+        if(window.confirm("Delete beacon?")){
             firebase.database().ref(`/Tracking/${selectedBeacon.id}`).remove();
             deselectBeacon();
         }
@@ -887,7 +917,6 @@ function setupInteractions(){
         else { showToast("Waiting for GPS..."); }
     };
 
-    // Fixed listener assignment
     document.getElementById('btnStopFind').onclick = stopCompass;
 }
 
@@ -930,9 +959,7 @@ function startCompass(){
     document.getElementById('findTargetName').innerText = selectedBeacon.id;
 
     if(navigator.geolocation){
-        // Changed to use {enableHighAccuracy:true}
         watchId = navigator.geolocation.watchPosition(processPosition, console.error, {enableHighAccuracy:true});
-        // Added 'true' for consistency in capture phase
         window.addEventListener('deviceorientation', processOrientation, true); 
     }
 }
@@ -944,7 +971,7 @@ function stopCompass(){
     if(selectedBeacon) document.getElementById('mapCard').style.transform = 'translateY(0)';
     
     if(watchId) navigator.geolocation.clearWatch(watchId);
-    window.removeEventListener('deviceorientation', processOrientation, true); // Added 'true' for consistency
+    window.removeEventListener('deviceorientation', processOrientation, true);
 }
 
 let currentHeading = 0;
@@ -953,7 +980,6 @@ function processOrientation(e){
     else if(e.alpha) currentHeading = 360 - e.alpha;
 }
 function processPosition(pos){
-    // CRITICAL FIX: Ensure selectedBeacon is still set before accessing its properties
     if(!selectedBeacon) return; 
 
     const { latitude, longitude } = pos.coords;
