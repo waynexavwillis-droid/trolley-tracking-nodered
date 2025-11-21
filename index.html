@@ -95,9 +95,10 @@ button:active { transform: scale(0.96); }
 }
 .btn-blue {
     background: var(--bluetooth); color: white;
-    padding: 8px 16px; border-radius: 100px;
-    font-size: 13px; font-weight: 600;
-    display: flex; align-items: center; gap: 6px;
+    padding: 12px 24px; border-radius: 100px;
+    font-size: 14px; font-weight: 600;
+    display: flex; align-items: center; gap: 8px;
+    box-shadow: 0 4px 15px rgba(0, 122, 255, 0.4);
 }
 
 .btn-icon {
@@ -264,7 +265,7 @@ header {
     pointer-events: auto;
     position: relative;
     margin: 0 16px 16px 16px;
-    height: 65vh;
+    height: 70vh;
     background: var(--glass);
     backdrop-filter: blur(24px);
     -webkit-backdrop-filter: blur(24px);
@@ -290,7 +291,7 @@ header {
     padding: 4px;
     display: flex;
     gap: 4px;
-    margin-bottom: 40px;
+    margin-bottom: 30px;
 }
 .finder-toggle-btn {
     padding: 10px 24px;
@@ -411,10 +412,7 @@ header {
     <h1 style="font-size:18px;">Trolley<span style="color:var(--accent)">Map</span></h1>
   </div>
   <div style="display:flex;gap:8px;">
-    <!-- NEW: Bluetooth Scan Button -->
-    <button id="hdr-ble" class="btn-blue">
-        <span style="font-size:16px;">📡</span> Scan BLE
-    </button>
+    <!-- REMOVED GLOBAL BLE BUTTON HERE AS REQUESTED -->
     <button id="hdr-add" class="btn-ghost" style="padding:8px 12px;">+ Add</button>
   </div>
 </header>
@@ -496,7 +494,8 @@ header {
         </div>
         <hr style="border:0;border-top:1px solid rgba(255,255,255,0.1);margin:12px 0;">
         <div style="display:flex;gap:10px;">
-            <button id="mc_find" class="btn-primary" style="flex:1;">Fly Details</button>
+            <!-- Renamed "Fly Details" to "Track" -->
+            <button id="mc_find" class="btn-primary" style="flex:1;">Track</button>
             <button id="mc_toggle_raw" class="btn-ghost" style="font-size:11px;">Tech Data</button>
             <button id="mc_del" class="btn-ghost" style="color:var(--danger);">Del</button>
         </div>
@@ -590,7 +589,12 @@ header {
             <div class="compass-arrow" id="finderArrow"></div>
         </div>
 
-        <!-- Ticks -->
+        <!-- NEW: Specific BLE Scan Button inside "Track" overlay -->
+        <button id="btnFinderBle" class="btn-blue" style="margin-bottom: 20px;">
+            📡 Scan for Signal
+        </button>
+
+        <!-- Ticks visual (now smaller to fit) -->
         <div style="display:flex;gap:10px;opacity:0.3;margin-top:auto;margin-bottom:40px;">
             <div style="width:2px;height:10px;background:white;"></div>
             <div style="width:2px;height:15px;background:white;"></div>
@@ -760,10 +764,10 @@ function renderMap(){
             radius: 8, color: '#FF453A', fillColor: '#FF453A', fillOpacity: 0.9, weight: 2
         });
         
-        // --- NEW: CARD LAYOUT TOOLTIP ---
+        // --- TOOLTIP CARD ---
         const lastSeen = b.raw.timestamp ? new Date(b.raw.timestamp) : new Date();
         const timeStr = lastSeen.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-        const isRecent = (Date.now() - lastSeen.getTime()) < 1000 * 60 * 60; // < 1 hour
+        const isRecent = (Date.now() - lastSeen.getTime()) < 1000 * 60 * 60; 
 
         const tooltipHtml = `
             <div class="tt-card">
@@ -801,7 +805,6 @@ function renderMap(){
             offset: [0, -12]
         });
         
-        // CLICK LOGIC (OPEN BOTTOM SHEET)
         m.on('click', (e) => {
              L.DomEvent.stopPropagation(e); 
              selectBeacon(b);
@@ -811,7 +814,6 @@ function renderMap(){
         idToMarker.set(b.id, m);
     });
 
-    // Re-add User Marker if it exists
     if(userMarker) userMarker.addTo(map);
 
     Object.keys(zoneCircles).forEach(k => map.removeLayer(zoneCircles[k]));
@@ -827,62 +829,58 @@ function renderMap(){
     }
 }
 
-// --- BLE SCANNER LOGIC ---
-async function startBleScan() {
-    // CHECK 1: Secure Context
+// --- TARGETED BLE SCANNER LOGIC ---
+async function scanTargetBeacon() {
+    if (!selectedBeacon) return;
+
     if (!window.isSecureContext) {
-        alert("Web Bluetooth Error:\nYour browser is not in a secure context (HTTPS or localhost).\n\nPlease host this file on a secure server or use localhost.");
+        alert("Web Bluetooth requires HTTPS or localhost.");
         return;
     }
-
-    // CHECK 2: Browser Support
     if (!navigator.bluetooth) {
-        alert("Web Bluetooth Error:\nThis browser does not support Bluetooth scanning.\n\nCompatible Browsers:\n• Chrome/Edge on Desktop\n• Chrome on Android\n• 'Bluefy' App on iOS (Safari won't work)");
+        alert("Browser not supported. Use Chrome (Android/Desktop) or Bluefy (iOS).");
         return;
     }
 
     try {
-        showToast("Scanning nearby BLE devices...");
+        const targetName = selectedBeacon.id; // We filter for the exact ID
+        showToast(`Scanning for ${targetName}...`);
         
-        // 1. Open Native Picker
+        // Filter specifically for this trolley's ID
         const device = await navigator.bluetooth.requestDevice({
-            acceptAllDevices: true, 
-            optionalServices: [] 
+            filters: [{ name: targetName }]
+            // Note: If the device advertises a name different from its ID, this filter will fail.
+            // In that case, switch to { acceptAllDevices: true } and check name manually.
         });
 
-        // 2. Device Selected
-        const deviceName = device.name || device.id;
-        showToast(`Found: ${deviceName}`);
+        showToast(`Connected to ${device.name}!`);
         
         if(!userLat || !userLng) {
-            alert("GPS signal not found. Cannot update trolley location.");
+            alert("Waiting for GPS signal to update location...");
             return;
         }
 
-        // 3. Confirm Update
-        if(confirm(`Mark ${deviceName} at your current location?\n\nLat: ${userLat.toFixed(5)}\nLng: ${userLng.toFixed(5)}`)) {
-            // 4. Update Firebase
-            // Note: We use the device name as the ID in Firebase.
-            const updates = {
-                latitude: userLat,
-                longitude: userLng,
-                timestamp: new Date().toISOString(),
-                lastSeenBy: "BLE-Scanner-App",
-                zoneId: "Scanned" // Optional: Mark as scanned
-            };
-            
-            firebase.database().ref(`/Tracking/${deviceName}`).update(updates)
-            .then(() => {
-                 showToast("Location Updated Successfully!");
-                 viewOnMap(deviceName); // Jump to it
-            })
-            .catch(err => showToast("Update Failed: " + err.message));
-        }
+        // Update Firebase with CURRENT user location (Phone is now the scanner)
+        const updates = {
+            latitude: userLat,
+            longitude: userLng,
+            timestamp: new Date().toISOString(),
+            lastSeenBy: "Manual-Track-Scan",
+            rssi: -40 // Mock RSSI as "Near" since we just connected
+        };
+        
+        await firebase.database().ref(`/Tracking/${selectedBeacon.id}`).update(updates);
+        
+        showToast("Location Updated Successfully!");
+        // Refresh Compass Target
+        selectedBeacon.lat = userLat;
+        selectedBeacon.lng = userLng;
+        renderMap();
 
     } catch (error) {
         console.log('BLE Error: ' + error);
         if(error.name === 'NotFoundError') {
-            showToast("Scan cancelled.");
+            showToast("Device not found nearby.");
         } else {
             alert("Scan Error: " + error.message);
         }
@@ -902,8 +900,8 @@ function setupInteractions(){
 
     document.getElementById('hdr-add').onclick = () => document.getElementById('modalAdd').style.display = 'flex';
     
-    // Bind BLE Button
-    document.getElementById('hdr-ble').onclick = startBleScan;
+    // Bind New BLE Button inside overlay
+    document.getElementById('btnFinderBle').onclick = scanTargetBeacon;
 
     document.getElementById('btnAddZone').onclick = () => document.getElementById('modalZone').style.display = 'flex';
     
@@ -964,7 +962,6 @@ function setupInteractions(){
         }
     };
 
-    // Toggle Raw Data
     document.getElementById('mc_toggle_raw').onclick = () => {
         const el = document.getElementById('mc_raw_content');
         el.classList.toggle('show');
@@ -973,7 +970,6 @@ function setupInteractions(){
     document.getElementById('mc_find').onclick = startCompass;
     document.getElementById('zoneFilter').onchange = updateUI;
 
-    // Manual map recenter to user
     document.getElementById('mapRecenter').onclick = () => {
         if(userLat && userLng) {
             map.flyTo([userLat, userLng], 18);
@@ -998,16 +994,13 @@ function viewOnMap(id){
 
 function selectBeacon(b){
     selectedBeacon = b;
-    // Center map on selected item
     map.flyTo([b.lat, b.lng], 18);
     
-    // Show Card
     document.getElementById('mc_name').innerText = b.id;
     document.getElementById('mc_zone').innerText = b.zone || "No Zone";
     
-    // Inject Raw Data
     document.getElementById('mc_raw_content').innerText = JSON.stringify(b.raw, null, 2);
-    document.getElementById('mc_raw_content').classList.remove('show'); // Default hidden
+    document.getElementById('mc_raw_content').classList.remove('show');
 
     document.getElementById('mapCard').style.transform = 'translateY(0)';
     renderMap();
@@ -1068,7 +1061,7 @@ function processOrientation(e){
 }
 function processPosition(pos){
     const { latitude, longitude } = pos.coords;
-    userLat = latitude; // update global user pos
+    userLat = latitude; 
     userLng = longitude;
 
     const destLat = selectedBeacon.lat;
